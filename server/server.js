@@ -58,6 +58,10 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads
 
 // Helper functions using Supabase
 async function readUsers() {
+    if (!supabase) {
+        console.error('Supabase not initialized');
+        return [];
+    }
     const { data, error } = await supabase.from('users').select('*');
     if (error) {
         console.error('Error reading users from Supabase:', error);
@@ -67,6 +71,10 @@ async function readUsers() {
 }
 
 async function readStories() {
+    if (!supabase) {
+        console.error('Supabase not initialized');
+        return [];
+    }
     const { data, error } = await supabase.from('stories').select('*').order('timestamp', { ascending: false });
     if (error) {
         console.error('Error reading stories from Supabase:', error);
@@ -159,6 +167,12 @@ app.post('/api/auth/login', async (req, res) => {
 // Signup endpoint
 app.post('/api/auth/signup', async (req, res) => {
     try {
+        if (!supabase) {
+            return res.status(503).json({
+                message: 'Internal server error: Database connection not configured.',
+                error: 'Please ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in server/.env'
+            });
+        }
         const { name, email, password } = req.body;
 
         if (!name || !email || !password) {
