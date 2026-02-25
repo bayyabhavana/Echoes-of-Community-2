@@ -50,6 +50,9 @@ export default function Header() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72">
               <nav className="mt-8 flex flex-col gap-2">
+                <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  Navigation
+                </div>
                 {navLinks.map((link) => (
                   <Link
                     key={link.to}
@@ -63,6 +66,53 @@ export default function Header() {
                     {link.label}
                   </Link>
                 ))}
+
+                <div className="mt-4 border-t border-border/50 pt-4">
+                  <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    Account
+                  </div>
+                  {user ? (
+                    <>
+                      <Link
+                        to={`/profile/${user.id}`}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                      >
+                        <User className="h-4 w-4" />
+                        View Profile
+                      </Link>
+                      {user.role === 'admin' && (
+                        <Link
+                          to="/admin/moderation"
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                        >
+                          <ShieldAlert className="h-4 w-4 text-primary" />
+                          Moderation
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => {
+                          logout();
+                          setOpen(false);
+                        }}
+                        className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Log out
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      to="/login"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <User className="h-4 w-4" />
+                      {t("nav.login", "Sign In")}
+                    </Link>
+                  )}
+                </div>
               </nav>
             </SheetContent>
           </Sheet>
