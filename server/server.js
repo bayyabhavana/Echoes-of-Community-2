@@ -693,7 +693,11 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📝 API endpoints available at http://localhost:${PORT}/api`);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running on http://localhost:${PORT}`);
+        console.log(`📝 API endpoints available at http://localhost:${PORT}/api`);
+    });
+}
+
+export default app;
