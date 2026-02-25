@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
@@ -10,7 +15,8 @@ let supabaseInstance = null;
 
 if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('YOUR_SUPABASE')) {
     console.error('❌ ERROR: Real Supabase credentials not found!');
-    console.error(`📂 Please open this exact file and paste your keys:`);
+    console.error(`� Currently reading URL as: "${supabaseUrl}"`);
+    console.error(`�📂 Please open this exact file and replace the text:`);
     console.error(`   ${path.join(__dirname, '.env')}`);
 } else {
     try {
