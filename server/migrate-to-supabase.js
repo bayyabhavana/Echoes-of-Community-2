@@ -9,12 +9,32 @@ const __dirname = path.dirname(__filename);
 const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 const STORIES_FILE = path.join(__dirname, 'data', 'stories.json');
 
+async function checkTable(tableName) {
+    if (!supabase) return false;
+    const { error } = await supabase.from(tableName).select('count', { count: 'exact', head: true });
+    if (error && error.code === '42P01') {
+        return false;
+    }
+    return true;
+}
+
 async function migrate() {
     if (!supabase) {
         console.error('❌ Migration failed: Supabase client not initialized.');
-        console.error('Please ensure your .env file has valid credentials.');
         return;
     }
+
+    const usersExist = await checkTable('users');
+    const storiesExist = await checkTable('stories');
+
+    if (!usersExist || !storiesExist) {
+        console.error('❌ ERROR: Database tables do not exist yet!');
+        console.error('📂 You MUST run the SQL code in your Supabase dashboard first.');
+        if (!usersExist) console.error('   Missing table: "users"');
+        if (!storiesExist) console.error('   Missing table: "stories"');
+        return;
+    }
+
     console.log('🚀 Starting migration to Supabase...');
 
     // 1. Migrate Users
