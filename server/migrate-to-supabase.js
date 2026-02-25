@@ -10,6 +10,11 @@ const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 const STORIES_FILE = path.join(__dirname, 'data', 'stories.json');
 
 async function migrate() {
+    if (!supabase) {
+        console.error('❌ Migration failed: Supabase client not initialized.');
+        console.error('Please ensure your .env file has valid credentials.');
+        return;
+    }
     console.log('🚀 Starting migration to Supabase...');
 
     // 1. Migrate Users
