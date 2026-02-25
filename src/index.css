@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 35 45% 97%;
+    --foreground: 25 15% 15%;
+
+    --card: 35 30% 99%;
+    --card-foreground: 25 15% 15%;
+
+    --popover: 35 30% 99%;
+    --popover-foreground: 25 15% 15%;
+
+    --primary: 30 80% 50%;
+    --primary-foreground: 35 45% 97%;
+
+    --secondary: 35 25% 93%;
+    --secondary-foreground: 25 15% 25%;
+
+    --muted: 35 20% 93%;
+    --muted-foreground: 25 10% 50%;
+
+    --accent: 35 30% 91%;
+    --accent-foreground: 25 15% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 30 80% 50%;
+
+    --radius: 0.75rem;
+
+    /* Story category tokens */
+    --story-personal: 340 55% 55%;
+    --story-community: 30 80% 50%;
+    --story-history: 45 65% 48%;
+    --story-culture: 350 60% 52%;
+
+    /* Feature tokens */
+    --felt-this: 30 70% 55%;
+    --felt-this-active: 30 85% 50%;
+    --bookmark: 35 60% 50%;
+    --bookmark-active: 30 80% 48%;
+    --audio-accent: 30 65% 52%;
+
+    /* Hero gradient */
+    --hero-gradient-start: 35 50% 95%;
+    --hero-gradient-end: 30 40% 92%;
+
+    /* Sidebar */
+    --sidebar-background: 35 30% 96%;
+    --sidebar-foreground: 25 12% 30%;
+    --sidebar-primary: 30 80% 50%;
+    --sidebar-primary-foreground: 35 45% 97%;
+    --sidebar-accent: 35 25% 93%;
+    --sidebar-accent-foreground: 25 15% 15%;
+    --sidebar-border: 30 20% 88%;
+    --sidebar-ring: 30 80% 50%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 30 80% 55%;
+    --primary-foreground: 240 10% 3.9%;
+
+    --secondary: 240 4.8% 10%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 4.8% 12%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 240 4.8% 12%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 30 80% 55%;
+
+    --story-personal: 340 60% 65%;
+    --story-community: 30 80% 60%;
+    --story-history: 45 65% 60%;
+    --story-culture: 350 65% 63%;
+
+    --felt-this: 30 75% 65%;
+    --felt-this-active: 30 85% 60%;
+    --bookmark: 35 65% 60%;
+    --bookmark-active: 30 80% 55%;
+    --audio-accent: 30 70% 65%;
+
+    --hero-gradient-start: 240 10% 2%;
+    --hero-gradient-end: 240 10% 5%;
+
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 240 5% 64.9%;
+    --sidebar-primary: 30 80% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 30 80% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
+  }
+}
+
+@layer utilities {
+  .hero-gradient {
+    background: linear-gradient(135deg,
+        hsl(var(--hero-gradient-start)) 0%,
+        hsl(var(--hero-gradient-end)) 100%);
+  }
+
+  .text-gradient-primary {
+    background: linear-gradient(135deg,
+        hsl(var(--primary)) 0%,
+        hsl(30 90% 45%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .felt-this-glow {
+    box-shadow: 0 0 20px -5px hsl(var(--felt-this-active) / 0.4);
+  }
+
+  .story-card-shadow {
+    box-shadow: 0 2px 20px -4px hsl(25 20% 30% / 0.08),
+      0 1px 4px -1px hsl(25 20% 30% / 0.05);
+  }
+
+  .story-card-shadow:hover {
+    box-shadow: 0 8px 30px -6px hsl(25 20% 30% / 0.12),
+      0 2px 8px -2px hsl(25 20% 30% / 0.08);
+  }
+
+  .mirror {
+    transform: scaleX(-1);
+  }
+}

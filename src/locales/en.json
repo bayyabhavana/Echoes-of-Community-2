@@ -1,0 +1,72 @@
+{
+    "nav": {
+        "home": "Home",
+        "explore": "Explore",
+        "circles": "Story Circles",
+        "map": "Map",
+        "bookmarks": "Bookmarks"
+    },
+    "hero": {
+        "badge": "Community Story Archive",
+        "title": "Everyday voices, local experiences.",
+        "subtitle": "A warm space to collect, preserve, and share real-life stories from your community. Every story matters. Every voice counts.",
+        "cta_share": "Share Your Story",
+        "cta_explore": "Explore Stories"
+    },
+    "stories": {
+        "title": "Community Stories",
+        "subtitle": "Discover stories shared by your community",
+        "empty_cta": "Be the first to share one!",
+        "categories": {
+            "All": "All",
+            "Personal": "Personal",
+            "Community": "Community",
+            "History": "History",
+            "Culture": "Culture"
+        },
+        "badge_audio": "Audio",
+        "badge_video": "Video",
+        "view_on_map": "View {{location}} on map",
+        "edit_story": "Edit Story",
+        "delete_story": "Delete Story",
+        "back_to_stories": "Back to stories",
+        "story_not_found": "Story not found",
+        "listen_audio": "Listen to this story",
+        "share_action": "Share"
+    },
+    "share": {
+        "title": "Share Your Reflection",
+        "title_input": "Story Title",
+        "content_placeholder": "Share what's on your mind...",
+        "location_label": "Where did this happen?",
+        "identity_label": "Who is sharing?",
+        "anonymous": "Post Anonymously",
+        "public": "Post as yourself",
+        "submit": "Share Reflection",
+        "edit": "Update Reflection"
+    },
+    "circles": {
+        "title": "Story Circles",
+        "subtitle": "Themed collections of stories that share a common thread",
+        "stories_count": "{{count}} stories",
+        "not_found": "Circle not found",
+        "back": "Back to Story Circles",
+        "reflections_shared": "{{count}} reflections shared",
+        "reflections_title": "Circle Reflections",
+        "reflections_subtitle": "Voices contributing to this thread",
+        "empty": "No stories have been added to this circle yet.",
+        "empty_cta": "Be the first to share a story"
+    },
+    "bookmarks": {
+        "badge": "My Collection",
+        "title": "Your Reflections",
+        "subtitle": "A curated space for the stories that resonate most with your journey",
+        "empty_title": "Your collection is empty",
+        "empty_subtitle": "Discover reflections shared by the community and save those that speak to you.",
+        "explore_cta": "Start Exploring"
+    },
+    "footer": {
+        "subtitle": "Every story matters. Every voice counts. A warm space to collect, preserve, and share real-life stories from your community.",
+        "copy": "© 2026 Echoes of Community. Built with care."
+    }
+}

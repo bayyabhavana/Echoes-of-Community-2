@@ -1,0 +1,71 @@
+{
+    "nav": {
+        "home": "Inicio",
+        "explore": "Explorar",
+        "circles": "Círculos de Historias",
+        "map": "Mapa",
+        "bookmarks": "Marcadores"
+    },
+    "hero": {
+        "badge": "Archivo de Historias Comunitarias",
+        "title": "Voces cotidianas, experiencias locales.",
+        "subtitle": "Un espacio cálido para recopilar, preservar y compartir historias de la vida real de tu comunidad. Cada historia importa. Cada voz cuenta."
+    },
+    "story_detail": {
+        "badge_video": "Video",
+        "view_on_map": "Ver {{location}} en el mapa",
+        "edit_story": "Editar historia",
+        "delete_story": "Eliminar historia",
+        "back_to_stories": "Volver a las historias",
+        "story_not_found": "Historia no encontrada",
+        "listen_audio": "Escucha esta historia",
+        "share_action": "Compartir"
+    },
+    "stories": {
+        "title": "Historias de la Comunidad",
+        "subtitle": "Descubre historias compartidas por tu comunidad",
+        "empty_cta": "¡Sé el primero en compartir una!",
+        "categories": {
+            "All": "Todas",
+            "Personal": "Personal",
+            "Community": "Comunidad",
+            "History": "Historia",
+            "Culture": "Cultura"
+        }
+    },
+    "share": {
+        "title": "Comparte tu Reflexión",
+        "title_input": "Título de la historia",
+        "content_placeholder": "Comparte lo que tienes en mente...",
+        "location_label": "¿Dónde ocurrió esto?",
+        "identity_label": "¿Quién está compartiendo?",
+        "anonymous": "Publicar anónimamente",
+        "public": "Publicar como tú mismo",
+        "submit": "Compartir reflexión",
+        "edit": "Actualizar reflexión"
+    },
+    "circles": {
+        "title": "Círculos de historias",
+        "subtitle": "Colecciones temáticas de historias que comparten un hilo común",
+        "stories_count": "{{count}} historias",
+        "not_found": "Círculo no encontrado",
+        "back": "Volver a Círculos de historias",
+        "reflections_shared": "{{count}} reflexiones compartidas",
+        "reflections_title": "Reflexiones del círculo",
+        "reflections_subtitle": "Voces que contribuyen a este hilo",
+        "empty": "Aún no se han añadido historias a este círculo.",
+        "empty_cta": "¡Sé el primero en compartir una historia!"
+    },
+    "bookmarks": {
+        "badge": "Mi colección",
+        "title": "Tus reflexiones",
+        "subtitle": "Un espacio curado para las historias que más resuenan con tu viaje",
+        "empty_title": "Tu colección está vacía",
+        "empty_subtitle": "Descubre reflexiones compartidas por la comunidad y guarda las que te hablen.",
+        "explore_cta": "Empezar a explorar"
+    },
+    "footer": {
+        "subtitle": "Cada historia importa. Cada voz cuenta. Un espacio cálido para recopilar, preservar y compartir historias de la vida real de su comunidad.",
+        "copy": "© 2026 Echoes of Community. Construido con esmero."
+    }
+}
