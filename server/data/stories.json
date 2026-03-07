@@ -1,5 +1,75 @@
 [
   {
+    "title": "Test Story for AuthorId Visibility 2026-03-07",
+    "content": "This is a test story to verify that the authorId is correctly associated and visible in the profile section. 2026-03-07",
+    "excerpt": "This is a test story to verify that the authorId is correctly associated and visible in the profile section. 2026-03-07",
+    "author": "bayyabhavanagoud",
+    "authorInitials": "b",
+    "timeAgo": "Just now",
+    "category": "Community",
+    "images": [
+      "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"
+    ],
+    "isAnonymous": false,
+    "hasAudio": false,
+    "hasVideo": false,
+    "status": "approved",
+    "language": "en",
+    "authorId": "1770530934644",
+    "id": "1772863587126-pcwrv16bl",
+    "image": null,
+    "timestamp": "2026-03-07T06:06:27.126Z",
+    "likes": 0,
+    "comments": 0,
+    "felt_this_count": 0
+  },
+  {
+    "title": "Test Story for AuthorId Visibility 2026-03-07",
+    "content": "This is a test story to verify that the authorId is correctly associated and visible in the profile section. 2026-03-07",
+    "excerpt": "This is a test story to verify that the authorId is correctly associated and visible in the profile section. 2026-03-07",
+    "author": "bayyabhavanagoud",
+    "authorInitials": "b",
+    "timeAgo": "Just now",
+    "category": "Community",
+    "images": [
+      "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"
+    ],
+    "isAnonymous": false,
+    "hasAudio": false,
+    "hasVideo": false,
+    "status": "approved",
+    "language": "en",
+    "id": "1772863535380-nqeboumml",
+    "image": null,
+    "timestamp": "2026-03-07T06:05:35.380Z",
+    "likes": 0,
+    "comments": 0,
+    "felt_this_count": 0
+  },
+  {
+    "title": "bvg",
+    "content": "g",
+    "excerpt": "g",
+    "author": "bayyabhavanagoud",
+    "authorInitials": "b",
+    "timeAgo": "Just now",
+    "category": "Community",
+    "images": [
+      "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"
+    ],
+    "isAnonymous": false,
+    "hasAudio": false,
+    "hasVideo": false,
+    "status": "approved",
+    "language": "en",
+    "id": "1772863106302-6sm26jv0l",
+    "image": null,
+    "timestamp": "2026-03-07T05:58:26.302Z",
+    "likes": 0,
+    "comments": 0,
+    "felt_this_count": 0
+  },
+  {
     "title": "   cvc",
     "content": "vv",
     "excerpt": "vv",
@@ -194,5 +264,51 @@
     "images": [
       "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"
     ]
+  },
+  {
+    "title": "Local Storage Verified",
+    "content": "This is a test story to verify local storage and data persistence after migration.",
+    "excerpt": "This is a test story to verify local storage and data persistence after migration.",
+    "author": "Initial Admin",
+    "authorInitials": "IA",
+    "timeAgo": "Just now",
+    "category": "Community",
+    "images": [
+      "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"
+    ],
+    "isAnonymous": false,
+    "hasAudio": false,
+    "hasVideo": false,
+    "status": "approved",
+    "language": "en",
+    "id": "1772860101795-7c1nwj3ju",
+    "image": null,
+    "timestamp": "2026-03-07T05:08:21.795Z",
+    "likes": 0,
+    "comments": 0,
+    "felt_this_count": 0
+  },
+  {
+    "title": "Test Story for AuthorId Visibility 2026-03-07",
+    "content": "This is a test story to verify that the authorId is correctly associated and visible in the profile section. 2026-03-07",
+    "excerpt": "This is a test story to verify that the authorId is correctly associated and visible in the profile section. 2026-03-07",
+    "author": "bayyabhavanagoud",
+    "authorInitials": "b",
+    "timeAgo": "Just now",
+    "category": "Community",
+    "images": [
+      "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"
+    ],
+    "isAnonymous": false,
+    "hasAudio": false,
+    "hasVideo": false,
+    "status": "approved",
+    "language": "en",
+    "id": "1772863635925-13i5ysf40",
+    "image": null,
+    "timestamp": "2026-03-07T06:07:15.925Z",
+    "likes": 0,
+    "comments": 0,
+    "felt_this_count": 0
   }
 ]

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile, useFollowers, useFollowing } from '@/hooks/useUserProfile';
+import { useUserStories } from '@/hooks/useStories';
 import ProfileHeader from '@/components/ProfileHeader';
 import UserListDialog from '@/components/UserListDialog';
 import EditProfileDialog from '@/components/EditProfileDialog';
@@ -14,8 +15,9 @@ import StoryCard from '@/components/StoryCard';
 
 export default function ProfilePage() {
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { user: currentUser } = useAuth();
-    const { data: profileUser, isLoading, error } = useUserProfile(id);
+    const { data: profileUser, isLoading: isProfileLoading, error } = useUserProfile(id);
     const { data: followers, isLoading: followersLoading } = useFollowers(id);
     const { data: following, isLoading: followingLoading } = useFollowing(id);
 
@@ -24,10 +26,9 @@ export default function ProfilePage() {
     const [showEditProfile, setShowEditProfile] = useState(false);
     const [showShareProfile, setShowShareProfile] = useState(false);
 
-    const { stories: allStories, isLoading: storiesLoading } = useStories();
-    const userStories = allStories.filter(s => s.author === profileUser.name);
+    const { data: userStories = [], isLoading: storiesLoading } = useUserStories(id);
 
-    if (isLoading) {
+    if (isProfileLoading && !profileUser) {
         return (
             <>
                 <Header />
@@ -86,7 +87,7 @@ export default function ProfilePage() {
                             <p className="text-muted-foreground mb-2">No stories or posts yet.</p>
                             {currentUser?.id === profileUser.id && (
                                 <button
-                                    onClick={() => window.location.href = '/share'}
+                                    onClick={() => navigate('/share')}
                                     className="text-primary font-medium hover:underline"
                                 >
                                     Share your first story

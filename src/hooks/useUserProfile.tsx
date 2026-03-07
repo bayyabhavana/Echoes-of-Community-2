@@ -24,22 +24,19 @@ interface UpdateProfileData {
 
 const API_BASE = '/api';
 
+export const fetchUserProfile = async (userId: string) => {
+    const response = await fetch(`${API_BASE}/users/${userId}`);
+    if (!response.ok) throw new Error('Failed to fetch user profile');
+    return response.json() as Promise<UserProfile>;
+};
+
 // Fetch user profile
 export const useUserProfile = (userId: string | undefined) => {
     return useQuery({
         queryKey: ['user', userId],
-        queryFn: async () => {
-            if (!userId) throw new Error('User ID is required');
-
-            const response = await fetch(`${API_BASE}/users/${userId}`);
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch user profile');
-            }
-
-            return response.json() as Promise<UserProfile>;
-        },
+        queryFn: () => userId ? fetchUserProfile(userId) : Promise.reject('No user ID'),
         enabled: !!userId,
+        staleTime: 5 * 1000 * 60, // 5 minutes
     });
 };
 
@@ -173,6 +170,7 @@ export const useFollowers = (userId: string | undefined) => {
             return response.json() as Promise<UserProfile[]>;
         },
         enabled: !!userId,
+        staleTime: 5 * 1000 * 60, // 5 minutes
     });
 };
 
@@ -192,5 +190,22 @@ export const useFollowing = (userId: string | undefined) => {
             return response.json() as Promise<UserProfile[]>;
         },
         enabled: !!userId,
+        staleTime: 5 * 1000 * 60, // 5 minutes
+    });
+};
+
+// Search users
+export const useSearchUsers = (query: string) => {
+    return useQuery({
+        queryKey: ['users', 'search', query],
+        queryFn: async () => {
+            if (!query) return [];
+            const response = await fetch(`${API_BASE}/users/search?q=${encodeURIComponent(query)}`);
+            if (!response.ok) {
+                throw new Error('Failed to search users');
+            }
+            return response.json() as Promise<UserProfile[]>;
+        },
+        enabled: query.length > 0,
     });
 };

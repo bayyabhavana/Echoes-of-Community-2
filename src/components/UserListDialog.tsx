@@ -11,6 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Link } from 'react-router-dom';
 import FollowButton from './FollowButton';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchUserProfile } from '@/hooks/useUserProfile';
+import { fetchUserStories } from '@/hooks/useStories';
 
 interface UserListItem {
     id: string;
@@ -38,6 +41,7 @@ export default function UserListDialog({
     currentUserFollowing = [],
 }: UserListDialogProps) {
     const { user: currentUser } = useAuth();
+    const queryClient = useQueryClient();
 
     const getInitials = (name: string) => {
         return name
@@ -78,6 +82,18 @@ export default function UserListDialog({
                                         <Link
                                             to={`/profile/${user.id}`}
                                             onClick={() => onOpenChange(false)}
+                                            onMouseEnter={() => {
+                                                queryClient.prefetchQuery({
+                                                    queryKey: ['user', user.id],
+                                                    queryFn: () => fetchUserProfile(user.id),
+                                                    staleTime: 5 * 1000 * 60,
+                                                });
+                                                queryClient.prefetchQuery({
+                                                    queryKey: ['user-stories', user.id],
+                                                    queryFn: () => fetchUserStories(user.id),
+                                                    staleTime: 5 * 1000 * 60,
+                                                });
+                                            }}
                                             className="flex items-center gap-3 flex-1 min-w-0"
                                         >
                                             <Avatar className="h-12 w-12 border-2 border-border">

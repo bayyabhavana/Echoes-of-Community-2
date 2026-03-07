@@ -4,7 +4,14 @@ import { Menu, X, BookOpen, Moon, Sun, User, LogOut, Languages, ShieldAlert } fr
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
+import { useSearchUsers } from "@/hooks/useUserProfile";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useQueryClient } from "@tanstack/react-query";
+import { fetchUserProfile } from "@/hooks/useUserProfile";
+import { fetchUserStories } from "@/hooks/useStories";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +27,18 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: searchResults, isLoading: isSearching } = useSearchUsers(searchQuery);
+  const queryClient = useQueryClient();
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const navLinks = [
     { to: "/", label: t("nav.home") },
@@ -76,6 +95,18 @@ export default function Header() {
                       <Link
                         to={`/profile/${user.id}`}
                         onClick={() => setOpen(false)}
+                        onMouseEnter={() => {
+                          queryClient.prefetchQuery({
+                            queryKey: ['user', user.id],
+                            queryFn: () => fetchUserProfile(user.id),
+                            staleTime: 5 * 1000 * 60,
+                          });
+                          queryClient.prefetchQuery({
+                            queryKey: ['user-stories', user.id],
+                            queryFn: () => fetchUserStories(user.id),
+                            staleTime: 5 * 1000 * 60,
+                          });
+                        }}
                         className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                       >
                         <User className="h-4 w-4" />
@@ -142,6 +173,67 @@ export default function Header() {
           ))}
         </nav>
 
+        {/* User Search Bar */}
+        <div className="hidden lg:flex items-center relative max-w-sm w-full mx-4">
+          <div className="relative w-full group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input
+              type="text"
+              placeholder="Search people..."
+              className="pl-9 h-9 w-full bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary/50 transition-all rounded-full"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <div className="absolute top-full mt-2 w-full bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in duration-200">
+                {isSearching ? (
+                  <div className="p-4 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary/50" />
+                  </div>
+                ) : searchResults && searchResults.length > 0 ? (
+                  <div className="py-2 max-h-80 overflow-y-auto">
+                    {searchResults.map((result) => (
+                      <Link
+                        key={result.id}
+                        to={`/profile/${result.id}`}
+                        onClick={() => setSearchQuery("")}
+                        onMouseEnter={() => {
+                          queryClient.prefetchQuery({
+                            queryKey: ['user', result.id],
+                            queryFn: () => fetchUserProfile(result.id),
+                            staleTime: 5 * 1000 * 60,
+                          });
+                          queryClient.prefetchQuery({
+                            queryKey: ['user-stories', result.id],
+                            queryFn: () => fetchUserStories(result.id),
+                            staleTime: 5 * 1000 * 60,
+                          });
+                        }}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-accent transition-colors"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={result.avatar} alt={result.name} />
+                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                            {getInitials(result.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium leading-none">{result.name}</span>
+                          <span className="text-xs text-muted-foreground">{result.email}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground italic">
+                    No users found
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -192,7 +284,21 @@ export default function Header() {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to={`/profile/${user.id}`}>
+                  <Link
+                    to={`/profile/${user.id}`}
+                    onMouseEnter={() => {
+                      queryClient.prefetchQuery({
+                        queryKey: ['user', user.id],
+                        queryFn: () => fetchUserProfile(user.id),
+                        staleTime: 5 * 1000 * 60,
+                      });
+                      queryClient.prefetchQuery({
+                        queryKey: ['user-stories', user.id],
+                        queryFn: () => fetchUserStories(user.id),
+                        staleTime: 5 * 1000 * 60,
+                      });
+                    }}
+                  >
                     <User className="mr-2 h-4 w-4" />
                     <span>View Profile</span>
                   </Link>

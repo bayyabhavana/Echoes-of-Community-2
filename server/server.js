@@ -13,7 +13,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'echoes-secret-key-change-in-production';
-import { supabase } from './supabase.js';
+
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const STORIES_FILE = path.join(__dirname, 'data', 'stories.json');
+const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -56,31 +59,42 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
-// Helper functions using Supabase
+// Helper functions using Local Files
 async function readUsers() {
-    if (!supabase) {
-        console.error('Supabase not initialized');
+    try {
+        const data = await fs.readFile(USERS_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Error reading users from local file:', error);
         return [];
     }
-    const { data, error } = await supabase.from('users').select('*');
-    if (error) {
-        console.error('Error reading users from Supabase:', error);
-        return [];
+}
+
+async function writeUsers(users) {
+    try {
+        await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Error writing users to local file:', error);
     }
-    return data;
 }
 
 async function readStories() {
-    if (!supabase) {
-        console.error('Supabase not initialized');
+    try {
+        const data = await fs.readFile(STORIES_FILE, 'utf8');
+        const stories = JSON.parse(data);
+        return stories.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+    } catch (error) {
+        console.error('Error reading stories from local file:', error);
         return [];
     }
-    const { data, error } = await supabase.from('stories').select('*').order('timestamp', { ascending: false });
-    if (error) {
-        console.error('Error reading stories from Supabase:', error);
-        return [];
+}
+
+async function writeStories(stories) {
+    try {
+        await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Error writing stories to local file:', error);
     }
-    return data;
 }
 
 // Authentication middleware
@@ -103,13 +117,10 @@ function authenticateToken(req, res, next) {
 
 // Admin only middleware
 async function requireAdmin(req, res, next) {
-    const { data: user, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', req.user.id)
-        .single();
+    const users = await readUsers();
+    const user = users.find(u => u.id === req.user.id);
 
-    if (error || !user || user.role !== 'admin') {
+    if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: 'Admin access required' });
     }
     next();
@@ -128,13 +139,10 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', email)
-            .single();
+        const users = await readUsers();
+        const user = users.find(u => u.email === email);
 
-        if (error || !user) {
+        if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
@@ -152,10 +160,9 @@ app.post('/api/auth/login', async (req, res) => {
 
         const { password: _, ...userWithoutPassword } = user;
 
-        // Return with camelCase for frontend
         res.json({
             ...userWithoutPassword,
-            joinedDate: user.joined_date,
+            joinedDate: user.joined_date || user.joinedDate,
             token
         });
     } catch (error) {
@@ -167,23 +174,14 @@ app.post('/api/auth/login', async (req, res) => {
 // Signup endpoint
 app.post('/api/auth/signup', async (req, res) => {
     try {
-        if (!supabase) {
-            return res.status(503).json({
-                message: 'Internal server error: Database connection not configured.',
-                error: 'Please ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in server/.env'
-            });
-        }
         const { name, email, password } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({ message: 'Name, email, and password are required' });
         }
 
-        const { data: existingUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', email)
-            .single();
+        const users = await readUsers();
+        const existingUser = users.find(u => u.email === email);
 
         if (existingUser) {
             return res.status(409).json({ message: 'Email already exists' });
@@ -206,8 +204,8 @@ app.post('/api/auth/signup', async (req, res) => {
             following: []
         };
 
-        const { error } = await supabase.from('users').insert([newUser]);
-        if (error) throw error;
+        users.push(newUser);
+        await writeUsers(users);
 
         const token = jwt.sign(
             { id: newUser.id, email: newUser.email, name: newUser.name },
@@ -240,13 +238,16 @@ app.post('/api/auth/reset-password', async (req, res) => {
             return res.status(400).json({ message: 'Email and new password are required' });
         }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        const { error } = await supabase
-            .from('users')
-            .update({ password: hashedPassword })
-            .eq('email', email);
+        const users = await readUsers();
+        const userIndex = users.findIndex(u => u.email === email);
 
-        if (error) throw error;
+        if (userIndex === -1) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        users[userIndex].password = hashedPassword;
+        await writeUsers(users);
 
         res.json({ message: 'Password reset successful' });
     } catch (error) {
@@ -258,20 +259,17 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // Verify token endpoint
 app.get('/api/auth/verify', authenticateToken, async (req, res) => {
     try {
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', req.user.id)
-            .single();
+        const users = await readUsers();
+        const user = users.find(u => u.id === req.user.id);
 
-        if (error || !user) {
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
         const { password: _, ...userWithoutPassword } = user;
         res.json({
             ...userWithoutPassword,
-            joinedDate: user.joined_date
+            joinedDate: user.joined_date || user.joinedDate
         });
     } catch (error) {
         console.error('Verify token error:', error);
@@ -283,17 +281,40 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
 // USER PROFILE ENDPOINTS
 // ============================================
 
+// Search users
+app.get('/api/users/search', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) return res.status(400).json({ message: 'Search query is required' });
+
+        const users = await readUsers();
+        const searchResults = users.filter(u => 
+            (u.name?.toLowerCase().includes(q.toLowerCase())) || 
+            (u.email?.toLowerCase().includes(q.toLowerCase()))
+        ).slice(0, 20);
+
+        const results = searchResults.map(({ password: _, ...user }) => ({
+            ...user,
+            joinedDate: user.joined_date || user.joinedDate,
+            followersCount: user.followers?.length || 0,
+            followingCount: user.following?.length || 0
+        }));
+
+        res.json(results);
+    } catch (error) {
+        console.error('Search users error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 // Get user profile by ID
 app.get('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', id)
-            .single();
+        const users = await readUsers();
+        const user = users.find(u => u.id === id);
 
-        if (error || !user) {
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
@@ -301,7 +322,7 @@ app.get('/api/users/:id', async (req, res) => {
 
         const profile = {
             ...userWithoutPassword,
-            joinedDate: user.joined_date,
+            joinedDate: user.joined_date || user.joinedDate,
             followersCount: user.followers?.length || 0,
             followingCount: user.following?.length || 0
         };
@@ -323,25 +344,25 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
         }
 
         const { bio, avatar, location, website } = req.body;
-        const updates = {};
-        if (bio !== undefined) updates.bio = bio;
-        if (avatar !== undefined) updates.avatar = avatar;
-        if (location !== undefined) updates.location = location;
-        if (website !== undefined) updates.website = website;
+        const users = await readUsers();
+        const userIndex = users.findIndex(u => u.id === id);
 
-        const { data: updatedUser, error } = await supabase
-            .from('users')
-            .update(updates)
-            .eq('id', id)
-            .select()
-            .single();
+        if (userIndex === -1) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-        if (error) throw error;
+        if (bio !== undefined) users[userIndex].bio = bio;
+        if (avatar !== undefined) users[userIndex].avatar = avatar;
+        if (location !== undefined) users[userIndex].location = location;
+        if (website !== undefined) users[userIndex].website = website;
+
+        await writeUsers(users);
+        const updatedUser = users[userIndex];
 
         const { password: _, ...userWithoutPassword } = updatedUser;
         res.json({
             ...userWithoutPassword,
-            joinedDate: updatedUser.joined_date
+            joinedDate: updatedUser.joined_date || updatedUser.joinedDate
         });
     } catch (error) {
         console.error('Update user profile error:', error);
@@ -370,33 +391,6 @@ app.post('/api/upload/avatar', authenticateToken, upload.single('avatar'), async
     }
 });
 
-// Search users
-app.get('/api/users/search', async (req, res) => {
-    try {
-        const { q } = req.query;
-        if (!q) return res.status(400).json({ message: 'Search query is required' });
-
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('*')
-            .or(`name.ilike.%${q}%,email.ilike.%${q}%`)
-            .limit(20);
-
-        if (error) throw error;
-
-        const results = users.map(({ password: _, ...user }) => ({
-            ...user,
-            joinedDate: user.joined_date,
-            followersCount: user.followers?.length || 0,
-            followingCount: user.following?.length || 0
-        }));
-
-        res.json(results);
-    } catch (error) {
-        console.error('Search users error:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
 
 // ============================================
 // FOLLOW/UNFOLLOW ENDPOINTS
@@ -409,22 +403,29 @@ app.post('/api/users/:id/follow', authenticateToken, async (req, res) => {
 
         if (currentUserId === id) return res.status(400).json({ message: 'You cannot follow yourself' });
 
-        const { data: currentUser } = await supabase.from('users').select('following').eq('id', currentUserId).single();
-        const { data: targetUser } = await supabase.from('users').select('followers').eq('id', id).single();
+        const users = await readUsers();
+        const currentUserIndex = users.findIndex(u => u.id === currentUserId);
+        const targetUserIndex = users.findIndex(u => u.id === id);
 
-        if (!currentUser || !targetUser) return res.status(404).json({ message: 'User not found' });
+        if (currentUserIndex === -1 || targetUserIndex === -1) return res.status(404).json({ message: 'User not found' });
+
+        const currentUser = users[currentUserIndex];
+        const targetUser = users[targetUserIndex];
+
+        if (!currentUser.following) currentUser.following = [];
+        if (!targetUser.followers) targetUser.followers = [];
 
         if (currentUser.following.includes(id)) return res.status(400).json({ message: 'Already following this user' });
 
-        const { error: err1 } = await supabase.from('users').update({ following: [...currentUser.following, id] }).eq('id', currentUserId);
-        const { error: err2 } = await supabase.from('users').update({ followers: [...targetUser.followers, currentUserId] }).eq('id', id);
+        currentUser.following.push(id);
+        targetUser.followers.push(currentUserId);
 
-        if (err1 || err2) throw err1 || err2;
+        await writeUsers(users);
 
         res.json({
             message: 'Successfully followed user',
-            followersCount: targetUser.followers.length + 1,
-            followingCount: currentUser.following.length + 1
+            followersCount: targetUser.followers.length,
+            followingCount: currentUser.following.length
         });
     } catch (error) {
         console.error('Follow user error:', error);
@@ -437,22 +438,26 @@ app.delete('/api/users/:id/unfollow', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const currentUserId = req.user.id;
 
-        const { data: currentUser } = await supabase.from('users').select('following').eq('id', currentUserId).single();
-        const { data: targetUser } = await supabase.from('users').select('followers').eq('id', id).single();
+        const users = await readUsers();
+        const currentUserIndex = users.findIndex(u => u.id === currentUserId);
+        const targetUserIndex = users.findIndex(u => u.id === id);
 
-        if (!currentUser || !targetUser) return res.status(404).json({ message: 'User not found' });
+        if (currentUserIndex === -1 || targetUserIndex === -1) return res.status(404).json({ message: 'User not found' });
 
-        if (!currentUser.following.includes(id)) return res.status(400).json({ message: 'Not following this user' });
+        const currentUser = users[currentUserIndex];
+        const targetUser = users[targetUserIndex];
 
-        const { error: err1 } = await supabase.from('users').update({ following: currentUser.following.filter(uid => uid !== id) }).eq('id', currentUserId);
-        const { error: err2 } = await supabase.from('users').update({ followers: targetUser.followers.filter(uid => uid !== currentUserId) }).eq('id', id);
+        if (!currentUser.following || !currentUser.following.includes(id)) return res.status(400).json({ message: 'Not following this user' });
 
-        if (err1 || err2) throw err1 || err2;
+        currentUser.following = currentUser.following.filter(uid => uid !== id);
+        targetUser.followers = targetUser.followers.filter(uid => uid !== currentUserId);
+
+        await writeUsers(users);
 
         res.json({
             message: 'Successfully unfollowed user',
-            followersCount: targetUser.followers.length - 1,
-            followingCount: currentUser.following.length - 1
+            followersCount: targetUser.followers?.length || 0,
+            followingCount: currentUser.following?.length || 0
         });
     } catch (error) {
         console.error('Unfollow user error:', error);
@@ -460,24 +465,86 @@ app.delete('/api/users/:id/unfollow', authenticateToken, async (req, res) => {
     }
 });
 
-// ============================================
-// STORY ENDPOINTS
-// ============================================
+app.get('/api/users/:id/followers', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const users = await readUsers();
+        const user = users.find(u => u.id === id);
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const followers = users.filter(u => user.followers?.includes(u.id));
+        res.json(followers.map(({ password: _, ...u }) => ({
+            ...u,
+            joinedDate: u.joined_date || u.joinedDate
+        })));
+    } catch (error) {
+        console.error('Get followers error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+app.get('/api/users/:id/following', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const users = await readUsers();
+        const user = users.find(u => u.id === id);
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const following = users.filter(u => user.following?.includes(u.id));
+        res.json(following.map(({ password: _, ...u }) => ({
+            ...u,
+            joinedDate: u.joined_date || u.joinedDate
+        })));
+    } catch (error) {
+        console.error('Get following error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Get stories for a specific user
+app.get('/api/users/:id/stories', async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log(`[DEBUG] Fetching stories for user ID: ${id}`);
+        const users = await readUsers();
+        const user = users.find(u => u.id === id);
+
+        if (!user) {
+            console.log(`[DEBUG] User not found for ID: ${id}`);
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        console.log(`[DEBUG] Found user: ${user.name}`);
+        const stories = await readStories();
+        // Filter stories where the authorId matches OR fall back to name matching for legacy support
+        const userStories = stories.filter(s => 
+            (s.authorId === user.id || (!s.authorId && s.author === user.name)) && 
+            s.status === 'approved'
+        );
+        console.log(`[DEBUG] Found ${userStories.length} stories for user ${user.name}`);
+
+        res.json(userStories.map(s => ({
+            ...s,
+            createdAt: s.timestamp || s.createdAt,
+            feltThisCount: s.felt_this_count || s.feltThisCount || 0
+        })));
+    } catch (error) {
+        console.error('Get user stories error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
 
 app.get('/api/stories', async (req, res) => {
     try {
-        const { data: stories, error } = await supabase
-            .from('stories')
-            .select('*')
-            .eq('status', 'approved')
-            .order('timestamp', { ascending: false });
+        const stories = await readStories();
+        const approvedStories = stories.filter(s => s.status === 'approved');
 
-        if (error) throw error;
-
-        res.json(stories.map(s => ({
+        res.json(approvedStories.map(s => ({
             ...s,
-            createdAt: s.timestamp,
-            feltThisCount: s.felt_this_count
+            createdAt: s.timestamp || s.createdAt,
+            feltThisCount: s.felt_this_count || s.feltThisCount || 0
         })));
     } catch (error) {
         res.status(500).json({ message: 'Failed to fetch stories' });
@@ -492,6 +559,7 @@ app.post('/api/stories', authenticateToken, async (req, res) => {
         const newStory = {
             ...rest,
             id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+            authorId: req.user.id, // Explicitly associate story with user ID
             images: storyData.images || (image ? [image] : []),
             image: image || null,
             status: 'approved',
@@ -501,8 +569,9 @@ app.post('/api/stories', authenticateToken, async (req, res) => {
             felt_this_count: 0
         };
 
-        const { error } = await supabase.from('stories').insert([newStory]);
-        if (error) throw error;
+        const stories = await readStories();
+        stories.push(newStory);
+        await writeStories(stories);
 
         res.status(201).json({
             message: 'Story shared successfully',
@@ -516,9 +585,8 @@ app.post('/api/stories', authenticateToken, async (req, res) => {
 
 app.get('/api/admin/stories', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const { data: stories, error } = await supabase.from('stories').select('*').order('timestamp', { ascending: false });
-        if (error) throw error;
-        res.json(stories.map(s => ({ ...s, createdAt: s.timestamp, feltThisCount: s.felt_this_count })));
+        const stories = await readStories();
+        res.json(stories.map(s => ({ ...s, createdAt: s.timestamp || s.createdAt, feltThisCount: s.felt_this_count || s.feltThisCount || 0 })));
     } catch (error) {
         res.status(500).json({ message: 'Failed to fetch stories for moderation' });
     }
@@ -530,8 +598,12 @@ app.put('/api/admin/stories/:id/status', authenticateToken, requireAdmin, async 
         const { status } = req.body;
         if (!['approved', 'rejected', 'pending'].includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
-        const { error } = await supabase.from('stories').update({ status }).eq('id', id);
-        if (error) throw error;
+        const stories = await readStories();
+        const storyIndex = stories.findIndex(s => s.id === id);
+        if (storyIndex === -1) return res.status(404).json({ message: 'Story not found' });
+
+        stories[storyIndex].status = status;
+        await writeStories(stories);
 
         res.json({ message: `Story ${status} successfully` });
     } catch (error) {
@@ -542,17 +614,19 @@ app.put('/api/admin/stories/:id/status', authenticateToken, requireAdmin, async 
 app.delete('/api/stories/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { data: story } = await supabase.from('stories').select('author').eq('id', id).single();
+        const stories = await readStories();
+        const story = stories.find(s => s.id === id);
         if (!story) return res.status(404).json({ message: 'Story not found' });
 
-        const { data: user } = await supabase.from('users').select('role').eq('id', req.user.id).single();
+        const users = await readUsers();
+        const user = users.find(u => u.id === req.user.id);
         const isAdmin = user && user.role === 'admin';
         const isAuthor = story.author === req.user.name;
 
         if (!isAdmin && !isAuthor) return res.status(403).json({ message: 'Not authorized to delete this story' });
 
-        const { error } = await supabase.from('stories').delete().eq('id', id);
-        if (error) throw error;
+        const filteredStories = stories.filter(s => s.id !== id);
+        await writeStories(filteredStories);
 
         res.json({ message: 'Story deleted successfully' });
     } catch (error) {
@@ -562,7 +636,7 @@ app.delete('/api/stories/:id', authenticateToken, async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Echoes of Community API is running with Supabase' });
+    res.json({ status: 'ok', message: 'Echoes of Community API is running with Local Files' });
 });
 
 // Start server

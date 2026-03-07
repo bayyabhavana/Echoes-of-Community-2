@@ -9,8 +9,13 @@
     "location": "",
     "website": "",
     "joinedDate": "2026-02-07T16:17:39.128Z",
-    "followers": [],
-    "following": [],
+    "followers": [
+      "1770530934644"
+    ],
+    "following": [
+      "1770482341463",
+      "1770530934644"
+    ],
     "role": "admin"
   },
   {
@@ -93,7 +98,9 @@
     "location": "",
     "website": "",
     "joinedDate": "2026-02-07T16:17:39.129Z",
-    "followers": [],
+    "followers": [
+      "1770530934644"
+    ],
     "following": [],
     "role": "user"
   },
@@ -102,7 +109,11 @@
     "name": "Bayya",
     "email": "bayyabhavanagoud@gmail.com",
     "password": "$2b$10$Zq50AKmD9bh2pKNE.cQTX.BsUnmhlpxvaGWz/LzkiZHnuu/2RVlf6",
-    "role": "user"
+    "role": "user",
+    "followers": [
+      "1",
+      "1770530934644"
+    ]
   },
   {
     "id": "1770482617078",
@@ -121,8 +132,14 @@
     "location": "hyderabad",
     "website": "",
     "joinedDate": "2026-02-08T06:08:54.644Z",
-    "followers": [],
-    "following": [],
+    "followers": [
+      "1"
+    ],
+    "following": [
+      "1",
+      "1770480534312",
+      "1770482341463"
+    ],
     "role": "user"
   },
   {
