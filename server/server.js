@@ -60,6 +60,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
+let lastError = null;
+
 // Helper functions using Supabase
 async function readUsers() {
     try {
@@ -68,10 +70,16 @@ async function readUsers() {
             const data = await fs.readFile(USERS_FILE, 'utf8');
             return JSON.parse(data);
         }
-        const { data, error } = await supabase.from('users').select('*');
-        if (error) throw error;
-        return data || [];
+        const { data, error } = await supabase.from('users').select('*').limit(1);
+        if (error) {
+            lastError = `Supabase Users Error: ${error.message}`;
+            throw error;
+        }
+        const { data: allData, error: allErr } = await supabase.from('users').select('*');
+        if (allErr) throw allErr;
+        return allData || [];
     } catch (error) {
+        lastError = `readUsers Error: ${error.message}`;
         console.error('Error reading users:', error);
         return [];
     }
@@ -685,8 +693,14 @@ app.delete('/api/stories/:id', authenticateToken, async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Echoes of Community API is running with Local Files' });
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        storage: supabase ? 'Supabase' : 'Local Files',
+        supabaseConfigured: !!supabase,
+        lastError: lastError,
+        message: supabase ? 'Echoes of Community API is running with Supabase' : 'Echoes of Community API is running with Local Files'
+    });
 });
 
 // Start server
