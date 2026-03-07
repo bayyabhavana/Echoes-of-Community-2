@@ -86,7 +86,11 @@ async function readUsers() {
         }
 
         if (allData && allData.length > 0) {
-            return allData;
+            // Fix localhost avatar URLs
+            return allData.map(u => ({
+                ...u,
+                avatar: u.avatar && u.avatar.includes('localhost:3001') ? '' : u.avatar
+            }));
         }
 
         // If Supabase is empty, fallback to local data
@@ -119,7 +123,13 @@ async function readStories() {
         }
         
         if (data && data.length > 0) {
-            return data;
+            // Fix localhost image URLs
+            return data.map(s => ({
+                ...s,
+                profile_image: s.profile_image && s.profile_image.includes('localhost:3001') ? null : s.profile_image,
+                image: s.image && s.image.includes('localhost:3001') ? null : s.image,
+                images: (s.images || []).map(img => img.includes('localhost:3001') ? null : img).filter(Boolean)
+            }));
         }
 
         // If Supabase is empty, fallback to local data
@@ -548,7 +558,10 @@ app.get('/api/users/:id/followers', async (req, res) => {
 
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const followers = users.filter(u => user.followers?.includes(u.id));
+        // Robust array check
+        const followerIds = Array.isArray(user.followers) ? user.followers : [];
+        const followers = users.filter(u => followerIds.map(String).includes(String(u.id)));
+        
         res.json(followers.map(({ password: _, ...u }) => ({
             ...u,
             joinedDate: u.joined_date || u.joinedDate
@@ -567,7 +580,10 @@ app.get('/api/users/:id/following', async (req, res) => {
 
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const following = users.filter(u => user.following?.includes(u.id));
+        // Robust array check
+        const followingIds = Array.isArray(user.following) ? user.following : [];
+        const following = users.filter(u => followingIds.map(String).includes(String(u.id)));
+
         res.json(following.map(({ password: _, ...u }) => ({
             ...u,
             joinedDate: u.joined_date || u.joinedDate
