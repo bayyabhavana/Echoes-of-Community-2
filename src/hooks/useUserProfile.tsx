@@ -106,12 +106,14 @@ export const useFollowUser = () => {
         onSuccess: (_, userId) => {
             // Invalidate queries to refetch updated data
             queryClient.invalidateQueries({ queryKey: ['user', userId] });
+            queryClient.invalidateQueries({ queryKey: ['followers', userId] });
 
-            // Get current user ID and invalidate their profile too
+            // Get current user ID and invalidate their profile and following list too
             const storedUser = localStorage.getItem('echoes_user');
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 queryClient.invalidateQueries({ queryKey: ['user', user.id] });
+                queryClient.invalidateQueries({ queryKey: ['following', user.id] });
             }
         },
     });
