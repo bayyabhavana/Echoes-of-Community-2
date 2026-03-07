@@ -693,11 +693,27 @@ app.delete('/api/stories/:id', authenticateToken, async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+    let userCount = 0;
+    let storyCount = 0;
+    
+    if (supabase) {
+        try {
+            const { count: uCount, error: uErr } = await supabase.from('users').select('*', { count: 'exact', head: true });
+            if (!uErr) userCount = uCount;
+            const { count: sCount, error: sErr } = await supabase.from('stories').select('*', { count: 'exact', head: true });
+            if (!sErr) storyCount = sCount;
+        } catch (e) {
+            console.error('Health check count error:', e);
+        }
+    }
+
     res.json({ 
         status: 'ok', 
         storage: supabase ? 'Supabase' : 'Local Files',
         supabaseConfigured: !!supabase,
+        userCount,
+        storyCount,
         lastError: lastError,
         message: supabase ? 'Echoes of Community API is running with Supabase' : 'Echoes of Community API is running with Local Files'
     });
