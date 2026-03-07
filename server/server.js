@@ -6,6 +6,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import { supabase } from './supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,41 +60,39 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
-// Helper functions using Local Files
+// Helper functions using Supabase
 async function readUsers() {
     try {
-        const data = await fs.readFile(USERS_FILE, 'utf8');
-        return JSON.parse(data);
+        if (!supabase) {
+            // Fallback to local if no Supabase (for local development)
+            const data = await fs.readFile(USERS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+        const { data, error } = await supabase.from('users').select('*');
+        if (error) throw error;
+        return data || [];
     } catch (error) {
-        console.error('Error reading users from local file:', error);
+        console.error('Error reading users:', error);
         return [];
-    }
-}
-
-async function writeUsers(users) {
-    try {
-        await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
-    } catch (error) {
-        console.error('Error writing users to local file:', error);
     }
 }
 
 async function readStories() {
     try {
-        const data = await fs.readFile(STORIES_FILE, 'utf8');
-        const stories = JSON.parse(data);
-        return stories.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+        if (!supabase) {
+            const data = await fs.readFile(STORIES_FILE, 'utf8');
+            const stories = JSON.parse(data);
+            return stories.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+        }
+        const { data, error } = await supabase
+            .from('stories')
+            .select('*')
+            .order('timestamp', { ascending: false });
+        if (error) throw error;
+        return data || [];
     } catch (error) {
-        console.error('Error reading stories from local file:', error);
+        console.error('Error reading stories:', error);
         return [];
-    }
-}
-
-async function writeStories(stories) {
-    try {
-        await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
-    } catch (error) {
-        console.error('Error writing stories to local file:', error);
     }
 }
 
@@ -204,8 +203,13 @@ app.post('/api/auth/signup', async (req, res) => {
             following: []
         };
 
-        users.push(newUser);
-        await writeUsers(users);
+        if (supabase) {
+            const { error } = await supabase.from('users').insert([newUser]);
+            if (error) throw error;
+        } else {
+            users.push(newUser);
+            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+        }
 
         const token = jwt.sign(
             { id: newUser.id, email: newUser.email, name: newUser.name },
@@ -238,16 +242,23 @@ app.post('/api/auth/reset-password', async (req, res) => {
             return res.status(400).json({ message: 'Email and new password are required' });
         }
 
-        const users = await readUsers();
-        const userIndex = users.findIndex(u => u.email === email);
-
-        if (userIndex === -1) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        users[userIndex].password = hashedPassword;
-        await writeUsers(users);
+
+        if (supabase) {
+            const { error } = await supabase
+                .from('users')
+                .update({ password: hashedPassword })
+                .eq('email', email);
+            if (error) throw error;
+        } else {
+            const users = await readUsers();
+            const userIndex = users.findIndex(u => u.email === email);
+            if (userIndex === -1) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+            users[userIndex].password = hashedPassword;
+            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+        }
 
         res.json({ message: 'Password reset successful' });
     } catch (error) {
@@ -344,20 +355,31 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
         }
 
         const { bio, avatar, location, website } = req.body;
-        const users = await readUsers();
-        const userIndex = users.findIndex(u => u.id === id);
+        const updateData = {};
+        if (bio !== undefined) updateData.bio = bio;
+        if (avatar !== undefined) updateData.avatar = avatar;
+        if (location !== undefined) updateData.location = location;
+        if (website !== undefined) updateData.website = website;
 
-        if (userIndex === -1) {
-            return res.status(404).json({ message: 'User not found' });
+        let updatedUser;
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('users')
+                .update(updateData)
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) throw error;
+            updatedUser = data;
+        } else {
+            const users = await readUsers();
+            const userIndex = users.findIndex(u => u.id === id);
+            if (userIndex === -1) return res.status(404).json({ message: 'User not found' });
+            
+            users[userIndex] = { ...users[userIndex], ...updateData };
+            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+            updatedUser = users[userIndex];
         }
-
-        if (bio !== undefined) users[userIndex].bio = bio;
-        if (avatar !== undefined) users[userIndex].avatar = avatar;
-        if (location !== undefined) users[userIndex].location = location;
-        if (website !== undefined) users[userIndex].website = website;
-
-        await writeUsers(users);
-        const updatedUser = users[userIndex];
 
         const { password: _, ...userWithoutPassword } = updatedUser;
         res.json({
@@ -404,28 +426,33 @@ app.post('/api/users/:id/follow', authenticateToken, async (req, res) => {
         if (currentUserId === id) return res.status(400).json({ message: 'You cannot follow yourself' });
 
         const users = await readUsers();
-        const currentUserIndex = users.findIndex(u => u.id === currentUserId);
-        const targetUserIndex = users.findIndex(u => u.id === id);
+        const currentUser = users.find(u => u.id === currentUserId);
+        const targetUser = users.find(u => u.id === id);
 
-        if (currentUserIndex === -1 || targetUserIndex === -1) return res.status(404).json({ message: 'User not found' });
-
-        const currentUser = users[currentUserIndex];
-        const targetUser = users[targetUserIndex];
+        if (!currentUser || !targetUser) return res.status(404).json({ message: 'User not found' });
 
         if (!currentUser.following) currentUser.following = [];
         if (!targetUser.followers) targetUser.followers = [];
 
         if (currentUser.following.includes(id)) return res.status(400).json({ message: 'Already following this user' });
 
-        currentUser.following.push(id);
-        targetUser.followers.push(currentUserId);
+        const updatedFollowing = [...currentUser.following, id];
+        const updatedFollowers = [...targetUser.followers, currentUserId];
 
-        await writeUsers(users);
+        if (supabase) {
+            const { error: err1 } = await supabase.from('users').update({ following: updatedFollowing }).eq('id', currentUserId);
+            const { error: err2 } = await supabase.from('users').update({ followers: updatedFollowers }).eq('id', id);
+            if (err1 || err2) throw (err1 || err2);
+        } else {
+            currentUser.following = updatedFollowing;
+            targetUser.followers = updatedFollowers;
+            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+        }
 
         res.json({
             message: 'Successfully followed user',
-            followersCount: targetUser.followers.length,
-            followingCount: currentUser.following.length
+            followersCount: updatedFollowers.length,
+            followingCount: updatedFollowing.length
         });
     } catch (error) {
         console.error('Follow user error:', error);
@@ -439,25 +466,30 @@ app.delete('/api/users/:id/unfollow', authenticateToken, async (req, res) => {
         const currentUserId = req.user.id;
 
         const users = await readUsers();
-        const currentUserIndex = users.findIndex(u => u.id === currentUserId);
-        const targetUserIndex = users.findIndex(u => u.id === id);
+        const currentUser = users.find(u => u.id === currentUserId);
+        const targetUser = users.find(u => u.id === id);
 
-        if (currentUserIndex === -1 || targetUserIndex === -1) return res.status(404).json({ message: 'User not found' });
-
-        const currentUser = users[currentUserIndex];
-        const targetUser = users[targetUserIndex];
+        if (!currentUser || !targetUser) return res.status(404).json({ message: 'User not found' });
 
         if (!currentUser.following || !currentUser.following.includes(id)) return res.status(400).json({ message: 'Not following this user' });
 
-        currentUser.following = currentUser.following.filter(uid => uid !== id);
-        targetUser.followers = targetUser.followers.filter(uid => uid !== currentUserId);
+        const updatedFollowing = currentUser.following.filter(uid => uid !== id);
+        const updatedFollowers = (targetUser.followers || []).filter(uid => uid !== currentUserId);
 
-        await writeUsers(users);
+        if (supabase) {
+            const { error: err1 } = await supabase.from('users').update({ following: updatedFollowing }).eq('id', currentUserId);
+            const { error: err2 } = await supabase.from('users').update({ followers: updatedFollowers }).eq('id', id);
+            if (err1 || err2) throw (err1 || err2);
+        } else {
+            currentUser.following = updatedFollowing;
+            targetUser.followers = updatedFollowers;
+            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+        }
 
         res.json({
             message: 'Successfully unfollowed user',
-            followersCount: targetUser.followers?.length || 0,
-            followingCount: currentUser.following?.length || 0
+            followersCount: updatedFollowers.length,
+            followingCount: updatedFollowing.length
         });
     } catch (error) {
         console.error('Unfollow user error:', error);
@@ -569,9 +601,14 @@ app.post('/api/stories', authenticateToken, async (req, res) => {
             felt_this_count: 0
         };
 
-        const stories = await readStories();
-        stories.push(newStory);
-        await writeStories(stories);
+        if (supabase) {
+            const { error } = await supabase.from('stories').insert([newStory]);
+            if (error) throw error;
+        } else {
+            const stories = await readStories();
+            stories.push(newStory);
+            await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
+        }
 
         res.status(201).json({
             message: 'Story shared successfully',
@@ -598,12 +635,20 @@ app.put('/api/admin/stories/:id/status', authenticateToken, requireAdmin, async 
         const { status } = req.body;
         if (!['approved', 'rejected', 'pending'].includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
-        const stories = await readStories();
-        const storyIndex = stories.findIndex(s => s.id === id);
-        if (storyIndex === -1) return res.status(404).json({ message: 'Story not found' });
+        if (supabase) {
+            const { error } = await supabase
+                .from('stories')
+                .update({ status: status })
+                .eq('id', id);
+            if (error) throw error;
+        } else {
+            const stories = await readStories();
+            const storyIndex = stories.findIndex(s => s.id === id);
+            if (storyIndex === -1) return res.status(404).json({ message: 'Story not found' });
 
-        stories[storyIndex].status = status;
-        await writeStories(stories);
+            stories[storyIndex].status = status;
+            await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
+        }
 
         res.json({ message: `Story ${status} successfully` });
     } catch (error) {
@@ -621,12 +666,17 @@ app.delete('/api/stories/:id', authenticateToken, async (req, res) => {
         const users = await readUsers();
         const user = users.find(u => u.id === req.user.id);
         const isAdmin = user && user.role === 'admin';
-        const isAuthor = story.author === req.user.name;
+        const isAuthor = story.authorId === req.user.id || story.author === req.user.name;
 
         if (!isAdmin && !isAuthor) return res.status(403).json({ message: 'Not authorized to delete this story' });
 
-        const filteredStories = stories.filter(s => s.id !== id);
-        await writeStories(filteredStories);
+        if (supabase) {
+            const { error } = await supabase.from('stories').delete().eq('id', id);
+            if (error) throw error;
+        } else {
+            const filteredStories = stories.filter(s => s.id !== id);
+            await fs.writeFile(STORIES_FILE, JSON.stringify(filteredStories, null, 2), 'utf8');
+        }
 
         res.json({ message: 'Story deleted successfully' });
     } catch (error) {
