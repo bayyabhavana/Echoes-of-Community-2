@@ -62,6 +62,14 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads
 
 let lastError = null;
 
+// Helper to timeout long-running Supabase requests
+const withTimeout = (promise, ms = 2000) => {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timed out')), ms))
+    ]);
+};
+
 // Helper functions using Supabase
 async function readUsers() {
     try {
@@ -70,8 +78,8 @@ async function readUsers() {
             const data = await fs.readFile(USERS_FILE, 'utf8');
             return JSON.parse(data);
         }
-        // Check if Supabase has data
-        const { data: allData, error: allErr } = await supabase.from('users').select('*');
+        // Check if Supabase has data with a quick timeout
+        const { data: allData, error: allErr } = await withTimeout(supabase.from('users').select('*'), 2500);
         if (allErr) {
             lastError = `Supabase fetch failed: ${allErr.message}`;
             throw allErr;
@@ -104,7 +112,7 @@ async function readStories() {
             const stories = JSON.parse(data);
             return stories.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
         }
-        const { data, error } = await supabase.from('stories').select('*');
+        const { data, error } = await withTimeout(supabase.from('stories').select('*'), 2500);
         if (error) {
             lastError = `Supabase Stories Error: ${error.message}`;
             throw error;
@@ -720,28 +728,17 @@ app.delete('/api/stories/:id', authenticateToken, async (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
-    let userCount = 0;
-    let storyCount = 0;
+    const users = await readUsers();
+    const stories = await readStories();
     
-    if (supabase) {
-        try {
-            const { count: uCount, error: uErr } = await supabase.from('users').select('*', { count: 'exact', head: true });
-            if (!uErr) userCount = uCount;
-            const { count: sCount, error: sErr } = await supabase.from('stories').select('*', { count: 'exact', head: true });
-            if (!sErr) storyCount = sCount;
-        } catch (e) {
-            console.error('Health check count error:', e);
-        }
-    }
-
     res.json({ 
         status: 'ok', 
-        storage: supabase ? 'Supabase' : 'Local Files',
+        storage: supabase ? 'Supabase (w/ Fallback)' : 'Local Files',
         supabaseConfigured: !!supabase,
-        userCount,
-        storyCount,
+        userCount: users.length,
+        storyCount: stories.length,
         lastError: lastError,
-        message: supabase ? 'Echoes of Community API is running with Supabase' : 'Echoes of Community API is running with Local Files'
+        message: users.length > 0 ? `API is active with ${users.length} users and ${stories.length} stories` : 'API is active but data is empty'
     });
 });
 
