@@ -72,6 +72,58 @@ export default function Header() {
                 <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
                   Navigation
                 </div>
+
+                {/* Mobile Search Bar */}
+                <div className="px-4 py-2 relative group w-full">
+                  <div className="relative w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                      type="text"
+                      placeholder="Search people..."
+                      className="pl-9 h-9 w-full bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary/50 transition-all rounded-full"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    {searchQuery && (
+                      <div className="absolute top-full mt-2 w-full bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in duration-200">
+                        {isSearching ? (
+                          <div className="p-4 flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary/50" />
+                          </div>
+                        ) : searchResults && searchResults.length > 0 ? (
+                          <div className="py-2 max-h-60 overflow-y-auto">
+                            {searchResults.map((result) => (
+                              <Link
+                                key={result.id}
+                                to={`/profile/${result.id}`}
+                                onClick={() => {
+                                  setSearchQuery("");
+                                  setOpen(false);
+                                }}
+                                className="flex items-center gap-3 px-4 py-2 hover:bg-accent transition-colors"
+                              >
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={result.avatar} alt={result.name} />
+                                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                    {getInitials(result.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium leading-none">{result.name}</span>
+                                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">{result.email}</span>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-4 text-center text-sm text-muted-foreground italic">
+                            No users found
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {navLinks.map((link) => (
                   <Link
                     key={link.to}
@@ -174,7 +226,7 @@ export default function Header() {
         </nav>
 
         {/* User Search Bar */}
-        <div className="hidden lg:flex items-center relative max-w-sm w-full mx-4">
+        <div className="hidden md:flex items-center relative max-w-sm w-full mx-4">
           <div className="relative w-full group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input
