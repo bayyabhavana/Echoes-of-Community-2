@@ -70,18 +70,30 @@ async function readUsers() {
             const data = await fs.readFile(USERS_FILE, 'utf8');
             return JSON.parse(data);
         }
-        const { data, error } = await supabase.from('users').select('*').limit(1);
-        if (error) {
-            lastError = `Supabase Users Error: ${error.message}`;
-            throw error;
-        }
+        // Check if Supabase has data
         const { data: allData, error: allErr } = await supabase.from('users').select('*');
-        if (allErr) throw allErr;
-        return allData || [];
+        if (allErr) {
+            lastError = `Supabase fetch failed: ${allErr.message}`;
+            throw allErr;
+        }
+
+        if (allData && allData.length > 0) {
+            return allData;
+        }
+
+        // If Supabase is empty, fallback to local data
+        lastError = "Supabase is empty, falling back to local users.json";
+        const localData = await fs.readFile(USERS_FILE, 'utf8');
+        return JSON.parse(localData);
     } catch (error) {
-        lastError = `readUsers Error: ${error.message}`;
-        console.error('Error reading users:', error);
-        return [];
+        lastError = `readUsers Fallback: ${error.message}`;
+        console.warn('Falling back to local users.json due to error:', error.message);
+        try {
+            const data = await fs.readFile(USERS_FILE, 'utf8');
+            return JSON.parse(data);
+        } catch (fsError) {
+            return [];
+        }
     }
 }
 
@@ -92,15 +104,29 @@ async function readStories() {
             const stories = JSON.parse(data);
             return stories.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
         }
-        const { data, error } = await supabase
-            .from('stories')
-            .select('*')
-            .order('timestamp', { ascending: false });
-        if (error) throw error;
-        return data || [];
+        const { data, error } = await supabase.from('stories').select('*');
+        if (error) {
+            lastError = `Supabase Stories Error: ${error.message}`;
+            throw error;
+        }
+        
+        if (data && data.length > 0) {
+            return data;
+        }
+
+        // If Supabase is empty, fallback to local data
+        lastError = "Supabase is empty, falling back to local stories.json";
+        const localData = await fs.readFile(STORIES_FILE, 'utf8');
+        return JSON.parse(localData);
     } catch (error) {
-        console.error('Error reading stories:', error);
-        return [];
+        lastError = `readStories Fallback: ${error.message}`;
+        console.warn('Falling back to local stories.json due to error:', error.message);
+        try {
+            const data = await fs.readFile(STORIES_FILE, 'utf8');
+            return JSON.parse(data);
+        } catch (fsError) {
+            return [];
+        }
     }
 }
 
