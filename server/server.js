@@ -246,7 +246,7 @@ app.post('/api/auth/signup', async (req, res) => {
         };
 
         if (supabase) {
-            const { error } = await supabase.from('users').insert([newUser]);
+            const { error } = await withTimeout(supabase.from('users').insert([newUser]), 3000);
             if (error) throw error;
         } else {
             users.push(newUser);

@@ -168,5 +168,33 @@
     "joinedDate": "2026-02-12T14:25:06.510Z",
     "followers": [],
     "following": []
+  },
+  {
+    "id": "1772902300001",
+    "name": "Laxmi Prasanna",
+    "email": "kalerulaxmiprasanna@gmail.com",
+    "password": "$2b$10$C4CfKTRgVfiLpdVdWwiuX.oAb2bMGowASOhHeHzNWLeqZEw3nMM/y",
+    "bio": "Echoes of Community Member",
+    "avatar": "",
+    "location": "",
+    "website": "",
+    "joinedDate": "2026-03-07T22:25:00.000Z",
+    "followers": [],
+    "following": [],
+    "role": "user"
+  },
+  {
+    "id": "1772902300002",
+    "name": "Community Member 1",
+    "email": "user1@example.com",
+    "password": "$2b$10$C4CfKTRgVfiLpdVdWwiuX.oAb2bMGowASOhHeHzNWLeqZEw3nMM/y",
+    "bio": "",
+    "avatar": "",
+    "location": "",
+    "website": "",
+    "joinedDate": "2026-03-07T22:25:00.000Z",
+    "followers": [],
+    "following": [],
+    "role": "user"
   }
 ]
