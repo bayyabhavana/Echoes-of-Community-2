@@ -196,5 +196,19 @@
     "followers": [],
     "following": [],
     "role": "user"
+  },
+  {
+    "id": "1772902300003",
+    "name": "Kishan Goud",
+    "email": "kishangoud@gmail.com",
+    "password": "$2b$10$C4CfKTRgVfiLpdVdWwiuX.oAb2bMGowASOhHeHzNWLeqZEw3nMM/y",
+    "bio": "",
+    "avatar": "",
+    "location": "",
+    "website": "",
+    "joinedDate": "2026-03-07T22:30:00.000Z",
+    "followers": [],
+    "following": [],
+    "role": "user"
   }
 ]

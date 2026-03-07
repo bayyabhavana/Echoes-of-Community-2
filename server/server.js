@@ -268,9 +268,10 @@ app.post('/api/auth/signup', async (req, res) => {
         });
     } catch (error) {
         console.error('Signup error:', error);
+        const isConnError = error.message.includes('fetch failed') || error.message.includes('timed out');
         res.status(500).json({
-            message: 'Internal server error during signup',
-            error: error.message
+            message: isConnError ? 'Database connection failed. Please ensure Supabase is configured.' : 'Internal server error during signup',
+            details: error.message
         });
     }
 });
