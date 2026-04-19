@@ -29,32 +29,17 @@ export function useFileUpload() {
                 throw new Error('Only JPEG, PNG, GIF, and WebP images are allowed');
             }
 
-            const formData = new FormData();
-            formData.append('avatar', file);
-
-            const token = localStorage.getItem('echoes_token');
-            if (!token) {
-                throw new Error('Authentication required');
-            }
-
-            const response = await fetch('/api/upload/avatar', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData,
+            const reader = new FileReader();
+            const promise = new Promise<string>((resolve) => {
+                reader.onloadend = () => resolve(reader.result as string);
             });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Upload failed');
-            }
-
-            const data = await response.json();
+            reader.readAsDataURL(file);
+            const base64Url = await promise;
+            
             setUploadState({ isUploading: false, progress: 100, error: null });
 
-            // Return the relative URL
-            return data.url;
+            // Return the base64 URL directly instead of attempting to save to disk on Vercel
+            return base64Url;
         } catch (error: any) {
             setUploadState({ isUploading: false, progress: 0, error: error.message });
             toast.error(error.message || 'Failed to upload file');
