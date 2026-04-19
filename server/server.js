@@ -19,6 +19,14 @@ const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 const STORIES_FILE = path.join(__dirname, 'data', 'stories.json');
 const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads');
 
+async function safeWriteFile(filePath, data) {
+    try {
+        await fs.writeFile(filePath, data, 'utf8');
+    } catch (err) {
+        console.warn(`[Vercel Warning] Could not save to disk: ${filePath}. Data is kept in memory but will clear on restart. Connect Supabase to fix this.`);
+    }
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: async (req, file, cb) => {
@@ -280,7 +288,7 @@ app.post('/api/auth/signup', async (req, res) => {
             if (error) throw error;
         } else {
             users.push(newUser);
-            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+            await safeWriteFile(USERS_FILE, JSON.stringify(users, null, 2));
         }
 
         const token = jwt.sign(
@@ -330,7 +338,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
                 return res.status(404).json({ message: 'User not found' });
             }
             users[userIndex].password = hashedPassword;
-            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+            await safeWriteFile(USERS_FILE, JSON.stringify(users, null, 2));
         }
 
         res.json({ message: 'Password reset successful' });
@@ -450,7 +458,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
             if (userIndex === -1) return res.status(404).json({ message: 'User not found' });
             
             users[userIndex] = { ...users[userIndex], ...updateData };
-            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+            await safeWriteFile(USERS_FILE, JSON.stringify(users, null, 2));
             updatedUser = users[userIndex];
         }
 
@@ -519,7 +527,7 @@ app.post('/api/users/:id/follow', authenticateToken, async (req, res) => {
         } else {
             currentUser.following = updatedFollowing;
             targetUser.followers = updatedFollowers;
-            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+            await safeWriteFile(USERS_FILE, JSON.stringify(users, null, 2));
         }
 
         res.json({
@@ -556,7 +564,7 @@ app.delete('/api/users/:id/unfollow', authenticateToken, async (req, res) => {
         } else {
             currentUser.following = updatedFollowing;
             targetUser.followers = updatedFollowers;
-            await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+            await safeWriteFile(USERS_FILE, JSON.stringify(users, null, 2));
         }
 
         res.json({
@@ -686,7 +694,7 @@ app.post('/api/stories', optionalAuthenticateToken, async (req, res) => {
         } else {
             const stories = await readStories();
             stories.push(newStory);
-            await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
+            await safeWriteFile(STORIES_FILE, JSON.stringify(stories, null, 2));
         }
 
         res.status(201).json({
@@ -727,7 +735,7 @@ app.post('/api/stories/bulk', optionalAuthenticateToken, async (req, res) => {
             if (error) throw error;
         } else {
             stories.push(...newStories);
-            await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
+            await safeWriteFile(STORIES_FILE, JSON.stringify(stories, null, 2));
         }
 
         res.status(201).json({
@@ -767,7 +775,7 @@ app.put('/api/admin/stories/:id/status', authenticateToken, requireAdmin, async 
             if (storyIndex === -1) return res.status(404).json({ message: 'Story not found' });
 
             stories[storyIndex].status = status;
-            await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
+            await safeWriteFile(STORIES_FILE, JSON.stringify(stories, null, 2));
         }
 
         res.json({ message: `Story ${status} successfully` });
@@ -795,7 +803,7 @@ app.delete('/api/stories/:id', authenticateToken, async (req, res) => {
             if (error) throw error;
         } else {
             const filteredStories = stories.filter(s => s.id !== id);
-            await fs.writeFile(STORIES_FILE, JSON.stringify(filteredStories, null, 2), 'utf8');
+            await safeWriteFile(STORIES_FILE, JSON.stringify(filteredStories, null, 2));
         }
 
         res.json({ message: 'Story deleted successfully' });
