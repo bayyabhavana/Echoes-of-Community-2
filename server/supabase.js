@@ -8,8 +8,8 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://xzcwbnngrrvbahlbhsks.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6Y3dibm5ncnJ2YmFobGJoc2tzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMDY1OTcsImV4cCI6MjA4NzU4MjU5N30.fMe7AhS5MNo7aGkYr4x-VhNc91PS2HPXzkpWgj3gLII';
+const supabaseUrl = 'https://xzcwbnngrrvbahlbhsks.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6Y3dibm5ncnJ2YmFobGJoc2tzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMDY1OTcsImV4cCI6MjA4NzU4MjU5N30.fMe7AhS5MNo7aGkYr4x-VhNc91PS2HPXzkpWgj3gLII';
 
 let supabaseInstance = null;
 
