@@ -3,7 +3,7 @@
     "id": "1",
     "name": "Initial Admin",
     "email": "admin@echoes.com",
-    "password": "$2b$10$C4CfKTRgVfiLpdVdWwiuX.oAb2bMGowASOhHeHzNWLeqZEw3nMM/y",
+    "password": "$2b$10$ZJX75ht2uhok5v89PExPs.fe56ZuT4/DAtD5zJgwoG3lI3YJOKlT.",
     "bio": "",
     "avatar": "",
     "location": "",
@@ -210,5 +210,33 @@
     "followers": [],
     "following": [],
     "role": "user"
+  },
+  {
+    "id": "1776597433882",
+    "name": "Automated Test User",
+    "email": "test1776597433796@example.com",
+    "password": "$2b$10$9sLdwQcDnHp9zxr8dENpGOUEHxJNfjACIoqxkAyxIIJ2ojta476ey",
+    "bio": "",
+    "avatar": "",
+    "location": "",
+    "website": "",
+    "joined_date": "2026-04-19T11:17:13.882Z",
+    "role": "user",
+    "followers": [],
+    "following": []
+  },
+  {
+    "id": "1776598021456",
+    "name": "Automated Test User",
+    "email": "test1776598021369@example.com",
+    "password": "$2b$10$N.EQiknYgxS517nXRLDxPu0k0ztrtKCRFBe75FlE0kCfYr9NObQWy",
+    "bio": "",
+    "avatar": "",
+    "location": "",
+    "website": "",
+    "joined_date": "2026-04-19T11:27:01.456Z",
+    "role": "user",
+    "followers": [],
+    "following": []
   }
 ]

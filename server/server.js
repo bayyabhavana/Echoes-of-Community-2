@@ -689,7 +689,7 @@ app.post('/api/stories', optionalAuthenticateToken, async (req, res) => {
         };
 
         if (supabase) {
-            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount'];
+            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount', 'location'];
             const sanitizedStory = Object.keys(newStory)
                 .filter(key => allowedKeys.includes(key))
                 .reduce((obj, key) => { obj[key] = newStory[key]; return obj; }, {});
@@ -735,7 +735,7 @@ app.post('/api/stories/bulk', optionalAuthenticateToken, async (req, res) => {
         });
 
         if (supabase) {
-            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount'];
+            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount', 'location'];
             const sanitizedStories = newStories.map(story => 
                 Object.keys(story)
                     .filter(key => allowedKeys.includes(key))
