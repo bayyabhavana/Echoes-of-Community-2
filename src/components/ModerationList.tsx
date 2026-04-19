@@ -88,7 +88,7 @@ export default function ModerationList() {
                             <div className="flex flex-col md:flex-row">
                                 {story.images && story.images.length > 0 && (
                                     <div className="md:w-48 h-32 md:h-auto overflow-hidden">
-                                        <img src={story.images[0]} alt={story.title} className="w-full h-full object-cover" />
+                                <img src={story.images?.[0] || "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"} alt={story.title} className="w-full h-full object-cover" />
                                     </div>
                                 )}
                                 <div className="flex-1">

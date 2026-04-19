@@ -89,7 +89,7 @@ export default function StoryCard({ story, index = 0 }: StoryCardProps) {
             />
           ) : (
             <img
-              src={story.images?.[0]}
+              src={story.images?.[0] || "https://placehold.co/800x400/312e81/ffffff?text=Echoes+of+Community"}
               alt={story.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
