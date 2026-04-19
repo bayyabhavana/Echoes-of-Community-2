@@ -153,13 +153,33 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) {
+    if (!token || token === 'null' || token === 'undefined') {
         return res.status(401).json({ message: 'Access token required' });
     }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
             return res.status(403).json({ message: 'Invalid or expired token' });
+        }
+        req.user = user;
+        next();
+    });
+}
+
+// Optional authentication for public routes like story posting
+function optionalAuthenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token || token === 'null' || token === 'undefined') {
+        req.user = null;
+        return next();
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            req.user = null; // Ignore token errors, treat as anonymous
+            return next();
         }
         req.user = user;
         next();
@@ -642,7 +662,7 @@ app.get('/api/stories', async (req, res) => {
     }
 });
 
-app.post('/api/stories', authenticateToken, async (req, res) => {
+app.post('/api/stories', optionalAuthenticateToken, async (req, res) => {
     try {
         const storyData = req.body;
         const { image, ...rest } = storyData;
@@ -650,7 +670,7 @@ app.post('/api/stories', authenticateToken, async (req, res) => {
         const newStory = {
             ...rest,
             id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
-            authorId: req.user.id, // Explicitly associate story with user ID
+            authorId: req.user ? req.user.id : null, // Explicitly associate story with user ID if present
             images: storyData.images || (image ? [image] : []),
             image: image || null,
             status: 'approved',
@@ -676,6 +696,47 @@ app.post('/api/stories', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Create story error:', error);
         res.status(500).json({ message: 'Failed to submit story' });
+    }
+});
+
+// Bulk submit stories (used by forms submitting multiple queue items)
+app.post('/api/stories/bulk', optionalAuthenticateToken, async (req, res) => {
+    try {
+        const storiesData = req.body;
+        if (!Array.isArray(storiesData)) return res.status(400).json({ message: 'Expected an array of stories' });
+
+        const stories = await readStories();
+        const newStories = storiesData.map(storyData => {
+            const { image, ...rest } = storyData;
+            return {
+                ...rest,
+                id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+                authorId: req.user ? req.user.id : null,
+                images: storyData.images || (image ? [image] : []),
+                image: image || null,
+                status: 'approved',
+                timestamp: new Date().toISOString(),
+                likes: 0,
+                comments: 0,
+                felt_this_count: 0
+            };
+        });
+
+        if (supabase) {
+            const { error } = await supabase.from('stories').insert(newStories);
+            if (error) throw error;
+        } else {
+            stories.push(...newStories);
+            await fs.writeFile(STORIES_FILE, JSON.stringify(stories, null, 2), 'utf8');
+        }
+
+        res.status(201).json({
+            message: 'Stories shared successfully',
+            stories: newStories.map(s => ({ ...s, createdAt: s.timestamp, feltThisCount: 0 }))
+        });
+    } catch (error) {
+        console.error('Bulk create story error:', error);
+        res.status(500).json({ message: 'Failed to submit stories' });
     }
 });
 
