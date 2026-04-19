@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -17,7 +18,9 @@ if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('YOUR_SUPABASE')) {
     console.error('❌ ERROR: Real Supabase credentials not found!');
 } else {
     try {
-        supabaseInstance = createClient(supabaseUrl, supabaseKey);
+        supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+            global: { fetch: fetch }
+        });
         console.log('✅ Supabase client initialized.');
     } catch (error) {
         console.error('❌ Failed to initialize Supabase client:', error.message);
