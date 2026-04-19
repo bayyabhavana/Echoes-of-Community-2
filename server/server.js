@@ -689,7 +689,11 @@ app.post('/api/stories', optionalAuthenticateToken, async (req, res) => {
         };
 
         if (supabase) {
-            const { error } = await supabase.from('stories').insert([newStory]);
+            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount'];
+            const sanitizedStory = Object.keys(newStory)
+                .filter(key => allowedKeys.includes(key))
+                .reduce((obj, key) => { obj[key] = newStory[key]; return obj; }, {});
+            const { error } = await supabase.from('stories').insert([sanitizedStory]);
             if (error) throw error;
         } else {
             const stories = await readStories();
@@ -701,10 +705,10 @@ app.post('/api/stories', optionalAuthenticateToken, async (req, res) => {
             message: 'Story shared successfully',
             story: { ...newStory, createdAt: newStory.timestamp, feltThisCount: 0 }
         });
-    } catch (error) {
-        console.error('Create story error:', error);
-        res.status(500).json({ message: 'Failed to submit story' });
-    }
+        } catch (error) {
+            console.error('Create story error:', error);
+            res.status(500).json({ message: 'Failed to submit story', details: error.message || error.toString() });
+        }
 });
 
 // Bulk submit stories (used by forms submitting multiple queue items)
@@ -731,7 +735,13 @@ app.post('/api/stories/bulk', optionalAuthenticateToken, async (req, res) => {
         });
 
         if (supabase) {
-            const { error } = await supabase.from('stories').insert(newStories);
+            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount'];
+            const sanitizedStories = newStories.map(story => 
+                Object.keys(story)
+                    .filter(key => allowedKeys.includes(key))
+                    .reduce((obj, key) => { obj[key] = story[key]; return obj; }, {})
+            );
+            const { error } = await supabase.from('stories').insert(sanitizedStories);
             if (error) throw error;
         } else {
             stories.push(...newStories);
