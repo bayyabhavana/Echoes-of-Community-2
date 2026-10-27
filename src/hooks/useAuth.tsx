@@ -21,7 +21,6 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  resetPassword: (email: string, newPassword: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -98,27 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const resetPassword = async (email: string, newPassword: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Password reset failed');
-      }
-
-      setIsLoading(false);
-    } catch (error: unknown) {
-      setIsLoading(false);
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-  };
-
   const logout = () => {
     setUser(null);
     localStorage.removeItem('echoes_user');
@@ -126,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, resetPassword, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -131,25 +131,25 @@ async function testTokenVerification(token) {
 }
 
 async function testPasswordReset() {
-    log('\n🔄 Testing Password Reset...', 'blue');
+    log('\n🔒 Testing Unverified Password Reset Rejection...', 'blue');
     try {
         const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                email: 'admin@echoes.com',
-                newPassword: 'password123' // Reset to same password for testing
+                email: 'reset-test@example.invalid',
+                newPassword: 'test-password-only'
             })
         });
 
         const data = await response.json();
 
-        if (response.ok) {
-            log('✅ Password reset successful!', 'green');
+        if (response.status === 501) {
+            log('✅ Unverified password reset correctly rejected!', 'green');
             log(`   Message: ${data.message}`, 'green');
-            return { success: true, data };
+            return { success: true };
         } else {
-            log(`❌ Password reset failed: ${data.message}`, 'red');
+            log(`❌ Expected unverified reset to be rejected; received HTTP ${response.status}`, 'red');
             return { success: false, error: data.message };
         }
     } catch (error) {

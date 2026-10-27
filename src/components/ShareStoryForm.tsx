@@ -17,6 +17,7 @@ import { useStories } from "@/hooks/useStories";
 import { useVideoRecorder } from "@/hooks/useVideoRecorder";
 import Sanscript from "sanscript";
 import { PlusCircle, Layers, Trash } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ShareStoryFormProps {
   initialData?: Story;
@@ -43,6 +44,7 @@ export default function ShareStoryForm({ initialData, isEditing = false }: Share
 
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { stories, updateStory } = useStories();
   const { isRecording, audioUrl, formattedDuration, startRecording, stopRecording, clearRecording } = useAudioRecorder();
@@ -258,6 +260,10 @@ export default function ShareStoryForm({ initialData, isEditing = false }: Share
         });
 
         if (response.ok) {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["stories"] }),
+            queryClient.invalidateQueries({ queryKey: ["user-stories"] }),
+          ]);
           toast({
             title: isBulk ? "Stories shared! 🌟" : "Story shared! 🌟",
             description: isBulk

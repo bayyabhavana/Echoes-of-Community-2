@@ -50,8 +50,8 @@ export default function ShareProfileDialog({
                     url: profileUrl,
                 });
                 toast.success('Shared successfully!');
-            } catch (error: any) {
-                if (error.name !== 'AbortError') {
+            } catch (error: unknown) {
+                if (error instanceof Error && error.name !== 'AbortError') {
                     toast.error('Failed to share');
                 }
             }

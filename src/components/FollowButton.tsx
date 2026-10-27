@@ -29,8 +29,9 @@ export default function FollowButton({ userId, isFollowing, variant = 'default' 
                 await followMutation.mutateAsync(userId);
                 toast.success('Following successfully');
             }
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to update follow status');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to update follow status';
+            toast.error(message);
         }
     };
 

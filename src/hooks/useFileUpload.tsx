@@ -40,10 +40,11 @@ export function useFileUpload() {
 
             // Return the base64 URL directly instead of attempting to save to disk on Vercel
             return base64Url;
-        } catch (error: any) {
-            setUploadState({ isUploading: false, progress: 0, error: error.message });
-            toast.error(error.message || 'Failed to upload file');
-            throw error;
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to upload file';
+            setUploadState({ isUploading: false, progress: 0, error: message });
+            toast.error(message);
+            throw error instanceof Error ? error : new Error(message);
         }
     };
 
