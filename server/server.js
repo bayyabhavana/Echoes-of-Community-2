@@ -342,17 +342,25 @@ app.post('/api/auth/signup', async (req, res) => {
         };
 
         let useLocalStorage = !canUseSupabase();
+        if (process.env.NODE_ENV === 'production' && useLocalStorage) {
+            return res.status(503).json({
+                message: 'Signup is temporarily unavailable because the account service is not configured.'
+            });
+        }
+
         if (canUseSupabase()) {
             try {
                 const { error } = await withTimeout(supabase.from('users').insert([newUser]), 1200);
                 if (error) {
                     if (!isSupabaseUnavailableError(error)) throw error;
                     markSupabaseUnavailable(error);
+                    if (process.env.NODE_ENV === 'production') throw error;
                     useLocalStorage = true;
                 }
             } catch (error) {
                 if (!isSupabaseUnavailableError(error)) throw error;
                 markSupabaseUnavailable(error);
+                if (process.env.NODE_ENV === 'production') throw error;
                 useLocalStorage = true;
             }
         }
@@ -378,9 +386,10 @@ app.post('/api/auth/signup', async (req, res) => {
     } catch (error) {
         console.error('Signup error:', error);
         const isConnError = isSupabaseUnavailableError(error);
-        res.status(500).json({
-            message: isConnError ? 'Database connection failed. Please ensure Supabase is configured.' : 'Internal server error during signup',
-            details: error.message
+        res.status(isConnError ? 503 : 500).json({
+            message: isConnError
+                ? 'Signup is temporarily unavailable because the account service could not be reached. Please try again later.'
+                : 'Internal server error during signup'
         });
     }
 });

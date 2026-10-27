@@ -24,6 +24,10 @@ This will automatically:
 # Or run: npm run start:all
 ```
 
+### Vercel deployment
+
+Configure `SUPABASE_URL` and `SUPABASE_ANON_KEY` in the Vercel project's environment variables for Production and Preview, using the values from the correct Supabase project. Redeploy after changing them. Production signup requires a reachable Supabase project; it does not persist accounts to local JSON files.
+
 ### Manual Start
 ```bash
 # Terminal 1
