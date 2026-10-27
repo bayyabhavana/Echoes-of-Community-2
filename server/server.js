@@ -7,6 +7,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { supabase } from './supabase.js';
+import { mergeUsers, normalizeEmail } from './user-store.js';
+import { mergeStories, toSupabaseStory } from './story-store.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +25,29 @@ async function safeWriteFile(filePath, data) {
     try {
         await fs.writeFile(filePath, data, 'utf8');
     } catch (err) {
-        console.warn(`[Vercel Warning] Could not save to disk: ${filePath}. Data is kept in memory but will clear on restart. Connect Supabase to fix this.`);
+        console.error(`[Storage Error] Could not save to disk: ${filePath}.`, err);
+        throw err;
+    }
+}
+
+function isSupabaseConnectionError(error) {
+    const message = error instanceof Error
+        ? `${error.message} ${error.cause?.message || ''}`
+        : `${error?.message || ''} ${error?.details || ''} ${error?.cause?.message || ''}`;
+    return /\b(ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH)\b/i.test(message);
+}
+
+function isSupabaseUnavailableError(error) {
+    return isSupabaseConnectionError(error) || /timed out/i.test(error?.message || '');
+}
+
+function canUseSupabase() {
+    return Boolean(supabase) && Date.now() >= supabaseRetryAfter;
+}
+
+function markSupabaseUnavailable(error) {
+    if (isSupabaseUnavailableError(error)) {
+        supabaseRetryAfter = Date.now() + SUPABASE_RETRY_DELAY;
     }
 }
 
@@ -69,6 +93,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
 let lastError = null;
+let supabaseRetryAfter = 0;
+const SUPABASE_RETRY_DELAY = 30_000;
 
 // Helper to timeout long-running Supabase requests
 const withTimeout = (promise, ms = 2000) => {
@@ -81,13 +107,13 @@ const withTimeout = (promise, ms = 2000) => {
 // Helper functions using Supabase
 async function readUsers() {
     try {
-        if (!supabase) {
+        if (!canUseSupabase()) {
             // Fallback to local if no Supabase (for local development)
             const data = await fs.readFile(USERS_FILE, 'utf8');
             return JSON.parse(data);
         }
         // Check if Supabase has data with a quick timeout
-        const { data: allData, error: allErr } = await withTimeout(supabase.from('users').select('*'), 2500);
+        const { data: allData, error: allErr } = await withTimeout(supabase.from('users').select('*'), 800);
         if (allErr) {
             lastError = `Supabase fetch failed: ${allErr.message}`;
             throw allErr;
@@ -95,10 +121,12 @@ async function readUsers() {
 
         if (allData && allData.length > 0) {
             // Fix localhost avatar URLs
-            return allData.map(u => ({
+            const remoteUsers = allData.map(u => ({
                 ...u,
                 avatar: u.avatar && u.avatar.includes('localhost:3001') ? '' : u.avatar
             }));
+            const localData = await fs.readFile(USERS_FILE, 'utf8');
+            return mergeUsers(remoteUsers, JSON.parse(localData));
         }
 
         // If Supabase is empty, fallback to local data
@@ -106,6 +134,7 @@ async function readUsers() {
         const localData = await fs.readFile(USERS_FILE, 'utf8');
         return JSON.parse(localData);
     } catch (error) {
+        markSupabaseUnavailable(error);
         lastError = `readUsers Fallback: ${error.message}`;
         console.warn('Falling back to local users.json due to error:', error.message);
         try {
@@ -119,12 +148,12 @@ async function readUsers() {
 
 async function readStories() {
     try {
-        if (!supabase) {
+        if (!canUseSupabase()) {
             const data = await fs.readFile(STORIES_FILE, 'utf8');
             const stories = JSON.parse(data);
             return stories.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
         }
-        const { data, error } = await withTimeout(supabase.from('stories').select('*'), 2500);
+        const { data, error } = await withTimeout(supabase.from('stories').select('*'), 800);
         if (error) {
             lastError = `Supabase Stories Error: ${error.message}`;
             throw error;
@@ -132,12 +161,14 @@ async function readStories() {
         
         if (data && data.length > 0) {
             // Fix localhost image URLs
-            return data.map(s => ({
+            const remoteStories = data.map(s => ({
                 ...s,
                 profile_image: s.profile_image && s.profile_image.includes('localhost:3001') ? null : s.profile_image,
                 image: s.image && s.image.includes('localhost:3001') ? null : s.image,
                 images: (s.images || []).map(img => img.includes('localhost:3001') ? null : img).filter(Boolean)
             }));
+            const localData = await fs.readFile(STORIES_FILE, 'utf8');
+            return mergeStories(remoteStories, JSON.parse(localData));
         }
 
         // If Supabase is empty, fallback to local data
@@ -145,6 +176,7 @@ async function readStories() {
         const localData = await fs.readFile(STORIES_FILE, 'utf8');
         return JSON.parse(localData);
     } catch (error) {
+        markSupabaseUnavailable(error);
         lastError = `readStories Fallback: ${error.message}`;
         console.warn('Falling back to local stories.json due to error:', error.message);
         try {
@@ -153,6 +185,30 @@ async function readStories() {
         } catch (fsError) {
             return [];
         }
+    }
+}
+
+async function persistStories(storiesToSave) {
+    if (canUseSupabase()) {
+        try {
+            const { error } = await withTimeout(
+                supabase.from('stories').insert(storiesToSave.map(toSupabaseStory)),
+                1200
+            );
+            if (error) {
+                if (!isSupabaseUnavailableError(error)) throw error;
+                markSupabaseUnavailable(error);
+            }
+        } catch (error) {
+            if (!isSupabaseUnavailableError(error)) throw error;
+            markSupabaseUnavailable(error);
+        }
+    }
+
+    if (!canUseSupabase()) {
+        const localStories = JSON.parse(await fs.readFile(STORIES_FILE, 'utf8'));
+        localStories.push(...storiesToSave);
+        await safeWriteFile(STORIES_FILE, JSON.stringify(localStories, null, 2));
     }
 }
 
@@ -218,8 +274,9 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
+        const normalizedEmail = normalizeEmail(email);
         const users = await readUsers();
-        const user = users.find(u => u.email === email);
+        const user = users.find(u => normalizeEmail(u.email) === normalizedEmail);
 
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });
@@ -260,7 +317,8 @@ app.post('/api/auth/signup', async (req, res) => {
         }
 
         const users = await readUsers();
-        const existingUser = users.find(u => u.email === email);
+        const normalizedEmail = normalizeEmail(email);
+        const existingUser = users.find(u => normalizeEmail(u.email) === normalizedEmail);
 
         if (existingUser) {
             return res.status(409).json({ message: 'Email already exists' });
@@ -271,7 +329,7 @@ app.post('/api/auth/signup', async (req, res) => {
         const newUser = {
             id: Date.now().toString(),
             name,
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
             bio: '',
             avatar: '',
@@ -283,10 +341,23 @@ app.post('/api/auth/signup', async (req, res) => {
             following: []
         };
 
-        if (supabase) {
-            const { error } = await withTimeout(supabase.from('users').insert([newUser]), 3000);
-            if (error) throw error;
-        } else {
+        let useLocalStorage = !canUseSupabase();
+        if (canUseSupabase()) {
+            try {
+                const { error } = await withTimeout(supabase.from('users').insert([newUser]), 1200);
+                if (error) {
+                    if (!isSupabaseUnavailableError(error)) throw error;
+                    markSupabaseUnavailable(error);
+                    useLocalStorage = true;
+                }
+            } catch (error) {
+                if (!isSupabaseUnavailableError(error)) throw error;
+                markSupabaseUnavailable(error);
+                useLocalStorage = true;
+            }
+        }
+
+        if (useLocalStorage) {
             users.push(newUser);
             await safeWriteFile(USERS_FILE, JSON.stringify(users, null, 2));
         }
@@ -306,7 +377,7 @@ app.post('/api/auth/signup', async (req, res) => {
         });
     } catch (error) {
         console.error('Signup error:', error);
-        const isConnError = error.message.includes('fetch failed') || error.message.includes('timed out');
+        const isConnError = isSupabaseUnavailableError(error);
         res.status(500).json({
             message: isConnError ? 'Database connection failed. Please ensure Supabase is configured.' : 'Internal server error during signup',
             details: error.message
@@ -315,37 +386,10 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 
 // Reset password endpoint
-app.post('/api/auth/reset-password', async (req, res) => {
-    try {
-        const { email, newPassword } = req.body;
-
-        if (!email || !newPassword) {
-            return res.status(400).json({ message: 'Email and new password are required' });
-        }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        if (supabase) {
-            const { error } = await supabase
-                .from('users')
-                .update({ password: hashedPassword })
-                .eq('email', email);
-            if (error) throw error;
-        } else {
-            const users = await readUsers();
-            const userIndex = users.findIndex(u => u.email === email);
-            if (userIndex === -1) {
-                return res.status(404).json({ message: 'User not found' });
-            }
-            users[userIndex].password = hashedPassword;
-            await safeWriteFile(USERS_FILE, JSON.stringify(users, null, 2));
-        }
-
-        res.json({ message: 'Password reset successful' });
-    } catch (error) {
-        console.error('Reset password error:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+app.post('/api/auth/reset-password', (req, res) => {
+    res.status(501).json({
+        message: 'Password recovery requires email verification. For a local account, run npm run reset-local-password.'
+    });
 });
 
 // Verify token endpoint
@@ -404,7 +448,7 @@ app.get('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const users = await readUsers();
-        const user = users.find(u => u.id === id);
+        const user = users.find(u => String(u.id) === String(id));
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -582,7 +626,7 @@ app.get('/api/users/:id/followers', async (req, res) => {
     try {
         const { id } = req.params;
         const users = await readUsers();
-        const user = users.find(u => u.id === id);
+        const user = users.find(u => String(u.id) === String(id));
 
         if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -628,7 +672,7 @@ app.get('/api/users/:id/stories', async (req, res) => {
         const { id } = req.params;
         console.log(`[DEBUG] Fetching stories for user ID: ${id}`);
         const users = await readUsers();
-        const user = users.find(u => u.id === id);
+        const user = users.find(u => String(u.id) === String(id));
 
         if (!user) {
             console.log(`[DEBUG] User not found for ID: ${id}`);
@@ -639,7 +683,10 @@ app.get('/api/users/:id/stories', async (req, res) => {
         const stories = await readStories();
         // Filter stories where the authorId matches OR fall back to name matching for legacy support
         const userStories = stories.filter(s => 
-            (s.authorId === user.id || (!s.authorId && s.author === user.name)) && 
+            (
+                (s.authorId !== undefined && String(s.authorId) === String(user.id))
+                || (!s.authorId && s.author?.trim().toLowerCase() === user.name?.trim().toLowerCase())
+            ) &&
             s.status === 'approved'
         );
         console.log(`[DEBUG] Found ${userStories.length} stories for user ${user.name}`);
@@ -688,18 +735,7 @@ app.post('/api/stories', optionalAuthenticateToken, async (req, res) => {
             felt_this_count: 0
         };
 
-        if (supabase) {
-            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount'];
-            const sanitizedStory = Object.keys(newStory)
-                .filter(key => allowedKeys.includes(key))
-                .reduce((obj, key) => { obj[key] = newStory[key]; return obj; }, {});
-            const { error } = await supabase.from('stories').insert([sanitizedStory]);
-            if (error) throw error;
-        } else {
-            const stories = await readStories();
-            stories.push(newStory);
-            await safeWriteFile(STORIES_FILE, JSON.stringify(stories, null, 2));
-        }
+        await persistStories([newStory]);
 
         res.status(201).json({
             message: 'Story shared successfully',
@@ -717,7 +753,6 @@ app.post('/api/stories/bulk', optionalAuthenticateToken, async (req, res) => {
         const storiesData = req.body;
         if (!Array.isArray(storiesData)) return res.status(400).json({ message: 'Expected an array of stories' });
 
-        const stories = await readStories();
         const newStories = storiesData.map(storyData => {
             const { image, ...rest } = storyData;
             return {
@@ -734,19 +769,7 @@ app.post('/api/stories/bulk', optionalAuthenticateToken, async (req, res) => {
             };
         });
 
-        if (supabase) {
-            const allowedKeys = ['id', 'title', 'content', 'excerpt', 'author', 'authorId', 'authorInitials', 'timeAgo', 'category', 'images', 'image', 'isAnonymous', 'hasAudio', 'hasVideo', 'status', 'language', 'timestamp', 'likes', 'comments', 'felt_this_count', 'feltthiscount'];
-            const sanitizedStories = newStories.map(story => 
-                Object.keys(story)
-                    .filter(key => allowedKeys.includes(key))
-                    .reduce((obj, key) => { obj[key] = story[key]; return obj; }, {})
-            );
-            const { error } = await supabase.from('stories').insert(sanitizedStories);
-            if (error) throw error;
-        } else {
-            stories.push(...newStories);
-            await safeWriteFile(STORIES_FILE, JSON.stringify(stories, null, 2));
-        }
+        await persistStories(newStories);
 
         res.status(201).json({
             message: 'Stories shared successfully',

@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "server": "node server/server.js",
+    "reset-local-password": "node server/reset-local-password.js",
     "dev:full": "npm run server & npm run dev",
     "test:auth": "node server/test-auth.js",
     "test:auth:watch": "npm run server & timeout /t 3 & npm run test:auth",
+    "test:server": "node --test server/user-store.test.js server/story-store.test.js",
     "start:all": "start cmd /k \"npm run server\" && timeout /t 2 && start cmd /k \"npm run dev\"",
     "setup": "npm install && node server/migrate-passwords.js",
     "automate": "npm run setup && npm run start:all && timeout /t 5 && npm run test:auth",

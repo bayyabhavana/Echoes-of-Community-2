@@ -52,7 +52,7 @@ npm run dev
 ✅ **Complete API**
 - POST `/api/auth/signup` - Create account
 - POST `/api/auth/login` - Login
-- POST `/api/auth/reset-password` - Reset password
+- POST `/api/auth/reset-password` - Disabled until verified email recovery is configured
 - GET `/api/auth/verify` - Verify token (protected)
 
 ---
@@ -70,7 +70,7 @@ Tests verify:
 - JWT token generation
 - Token verification
 - Signup with hashing
-- Password reset
+- Rejection of unverified password resets
 
 ---
 
@@ -97,7 +97,7 @@ Tests verify:
 - ✅ Passwords hashed with bcrypt
 - ✅ JWT tokens for stateless auth
 - ✅ Protected routes with middleware
-- ✅ Secure password reset
+- ✅ Unverified web-based password resets are rejected
 - ✅ No plain-text password storage
 
 ---
@@ -126,6 +126,13 @@ npm run setup
 ```bash
 npm run migrate
 ```
+
+**Reset a local development account password:**
+```bash
+npm run reset-local-password
+```
+
+The command prompts for the account email and a new password (entered without echoing it). It updates only `server/data/users.json` and refuses to run when `NODE_ENV=production`. Web-based password reset remains disabled until verified email recovery is configured.
 
 ---
 

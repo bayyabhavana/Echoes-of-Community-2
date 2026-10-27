@@ -106,8 +106,9 @@ export default function EditProfileDialog({
             await updateProfile.mutateAsync({ userId, data });
             toast.success('Profile updated successfully');
             onOpenChange(false);
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to update profile');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to update profile';
+            toast.error(message);
         }
     };
 
